@@ -3,9 +3,14 @@ import Combine
 
 class NetworkManager {
     let currentUserId: String
+    var currentUsername: String {
+        didSet {
+            UserDefaults.standard.set(currentUsername, forKey: "PointerPals_Username")
+        }
+    }
     private let cursorUpdateSubject = PassthroughSubject<CursorData, Never>()
     private var subscriptions: Set<String> = []
-    
+
     // WebSocket configuration
     private var webSocketTask: URLSessionWebSocketTask?
     private let serverURL: String
@@ -18,7 +23,7 @@ class NetworkManager {
     
     init(serverURL: String = PointerPalsConfig.serverURL) {
         self.serverURL = serverURL
-        
+
         // Generate a unique user ID (in production, this might come from auth)
         if let savedUserId = UserDefaults.standard.string(forKey: "PointerPals_UserId") {
             self.currentUserId = savedUserId
@@ -26,11 +31,19 @@ class NetworkManager {
             self.currentUserId = "user_\(UUID().uuidString.prefix(8))"
             UserDefaults.standard.set(self.currentUserId, forKey: "PointerPals_UserId")
         }
-        
-        if PointerPalsConfig.debugLogging {
-            print("Network Manager initialized with User ID: \(currentUserId)")
+
+        // Load or create username
+        if let savedUsername = UserDefaults.standard.string(forKey: "PointerPals_Username"), !savedUsername.isEmpty {
+            self.currentUsername = savedUsername
+        } else {
+            self.currentUsername = "User"
+            UserDefaults.standard.set(self.currentUsername, forKey: "PointerPals_Username")
         }
-        
+
+        if PointerPalsConfig.debugLogging {
+            print("Network Manager initialized with User ID: \(currentUserId), Username: \(currentUsername)")
+        }
+
         // Establish WebSocket connection
         connectToServer()
     }
@@ -61,9 +74,10 @@ class NetworkManager {
     private func registerUser() {
         let registerMessage: [String: Any] = [
             "action": "register",
-            "userId": currentUserId
+            "userId": currentUserId,
+            "username": currentUsername
         ]
-        
+
         sendMessage(registerMessage)
     }
     
@@ -144,7 +158,9 @@ class NetworkManager {
               let y = dict["y"] as? Double else {
             return nil
         }
-        
+
+        let username = dict["username"] as? String
+
         let timestamp: Date
         if let timestampString = dict["timestamp"] as? String,
            let date = ISO8601DateFormatter().date(from: timestampString) {
@@ -152,8 +168,8 @@ class NetworkManager {
         } else {
             timestamp = Date()
         }
-        
-        return CursorData(userId: userId, x: x, y: y, timestamp: timestamp)
+
+        return CursorData(userId: userId, username: username, x: x, y: y, timestamp: timestamp)
     }
     
     func publishCursorPosition(_ cursorData: CursorData) {

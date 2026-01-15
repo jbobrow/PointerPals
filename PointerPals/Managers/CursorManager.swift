@@ -65,14 +65,17 @@ class CursorManager {
         guard let window = cursorWindows[cursorData.userId] else {
             return
         }
-        
+
         // Cancel existing inactivity timer
         inactivityTimers[cursorData.userId]?.invalidate()
-        
+
+        // Update username if available
+        window.updateUsername(cursorData.username)
+
         // Fade in if needed and update position
         window.fadeIn()
         window.updatePosition(x: cursorData.x, y: cursorData.y)
-        
+
         // Start new inactivity timer
         let timer = Timer.scheduledTimer(
             withTimeInterval: PointerPalsConfig.inactivityTimeout,
@@ -82,7 +85,7 @@ class CursorManager {
             self?.inactivityTimers[cursorData.userId]?.invalidate()
             self?.inactivityTimers.removeValue(forKey: cursorData.userId)
         }
-        
+
         inactivityTimers[cursorData.userId] = timer
     }
     

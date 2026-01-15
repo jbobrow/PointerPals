@@ -182,11 +182,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.messageText = "Settings"
         alert.informativeText = "Your User ID: \(networkManager.currentUserId)\n\nShare this ID with others so they can subscribe to your cursor."
+        alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Copy ID")
         alert.addButton(withTitle: "Close")
-        
+
+        // Create a stack view for username input
+        let stackView = NSStackView()
+        stackView.orientation = .vertical
+        stackView.spacing = 8
+        stackView.alignment = .leading
+
+        let usernameLabel = NSTextField(labelWithString: "Username:")
+        let usernameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        usernameField.stringValue = networkManager.currentUsername
+        usernameField.placeholderString = "Enter your username"
+
+        stackView.addArrangedSubview(usernameLabel)
+        stackView.addArrangedSubview(usernameField)
+
+        alert.accessoryView = stackView
+        alert.window.initialFirstResponder = usernameField
+
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
+            // Save username
+            let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !newUsername.isEmpty {
+                networkManager.currentUsername = newUsername
+            }
+        } else if response == .alertSecondButtonReturn {
+            // Copy ID
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(networkManager.currentUserId, forType: .string)
         }

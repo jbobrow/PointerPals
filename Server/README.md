@@ -52,7 +52,8 @@ The server uses a JSON-based protocol over WebSocket:
 ```json
 {
   "action": "register",
-  "userId": "user_abc123"
+  "userId": "user_abc123",
+  "username": "Alice"
 }
 ```
 
@@ -78,6 +79,7 @@ The server uses a JSON-based protocol over WebSocket:
   "action": "cursor_update",
   "cursorData": {
     "userId": "user_abc123",
+    "username": "Alice",
     "x": 0.5,
     "y": 0.3,
     "timestamp": "2024-01-14T12:00:00.000Z"
@@ -92,6 +94,7 @@ The server uses a JSON-based protocol over WebSocket:
 {
   "type": "registered",
   "userId": "user_abc123",
+  "username": "Alice",
   "message": "Successfully connected to PointerPals server"
 }
 ```
@@ -110,6 +113,7 @@ The server uses a JSON-based protocol over WebSocket:
   "type": "cursor_update",
   "cursorData": {
     "userId": "user_xyz789",
+    "username": "Bob",
     "x": 0.5,
     "y": 0.3,
     "timestamp": "2024-01-14T12:00:00.000Z"
@@ -127,12 +131,21 @@ The server uses a JSON-based protocol over WebSocket:
 
 ## Features
 
-- ✅ User registration
+- ✅ User registration with usernames
 - ✅ Publish/Subscribe pattern
 - ✅ Real-time cursor broadcasting
 - ✅ Automatic cleanup of stale connections
 - ✅ Connection health monitoring
 - ✅ Graceful shutdown
+
+## Cloud Hosting
+
+**📘 [Google Cloud Hosting Guide](./GOOGLE_CLOUD_HOSTING.md)**
+
+See the complete guide for deploying to Google Cloud Platform using:
+- Cloud Run (Recommended - easiest and most cost-effective)
+- Compute Engine (Traditional VM)
+- Kubernetes Engine (Production-scale)
 
 ## Production Deployment
 
