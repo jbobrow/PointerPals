@@ -13,43 +13,21 @@ This guide will walk you through deploying the PointerPals WebSocket server on G
 
 Before starting, make sure you have:
 - A Google Cloud Platform account ([sign up here](https://cloud.google.com/))
-- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) installed on your machine
 - Your server code in the `Server` directory
-
-### Initial Setup
-
-1. **Install Google Cloud CLI** (if not already installed):
-   ```bash
-   # macOS
-   brew install google-cloud-sdk
-
-   # Or download from: https://cloud.google.com/sdk/docs/install
-   ```
-
-2. **Authenticate with Google Cloud**:
-   ```bash
-   gcloud auth login
-   ```
-
-3. **Create a new project** (or use existing):
-   ```bash
-   gcloud projects create pointerpals-server --name="PointerPals Server"
-   gcloud config set project pointerpals-server
-   ```
-
-4. **Enable billing** for your project:
-   - Visit https://console.cloud.google.com/billing
-   - Link a billing account to your project
 
 ---
 
 ## Option 1: Google Cloud Run (Recommended)
 
-Cloud Run is the easiest and most cost-effective option for deploying containerized applications. It automatically scales based on traffic.
+Cloud Run is the easiest and most cost-effective option for deploying containerized applications. It automatically scales based on traffic and has a generous free tier.
 
-### Step 1: Prepare Your Application
+### Method A: Deploy via Web Console (Easiest)
 
-1. **Create a Dockerfile** in the `Server` directory:
+This method uses GitHub integration to automatically build and deploy your server.
+
+#### Step 1: Prepare Your Repository
+
+1. **Create a Dockerfile** in the `Server` directory of your repository:
 
 ```dockerfile
 FROM node:18-alpine
@@ -83,15 +61,116 @@ const wss = new WebSocket.Server({ port: PORT });
 console.log(`PointerPals WebSocket Server running on port ${PORT}`);
 ```
 
-### Step 2: Build and Deploy
+3. **Commit and push** these changes to your GitHub repository
 
-1. **Enable required APIs**:
-   ```bash
-   gcloud services enable run.googleapis.com
-   gcloud services enable containerregistry.googleapis.com
+#### Step 2: Create a Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Click the project dropdown at the top → **New Project**
+3. Enter project name: `pointerpals-server`
+4. Click **Create**
+5. Wait for project creation, then select it from the project dropdown
+
+#### Step 3: Enable Billing
+
+1. Go to [Billing](https://console.cloud.google.com/billing) in the left menu
+2. Link a billing account to your project (required for Cloud Run, but you'll stay in free tier)
+3. If you don't have a billing account, click **Create Account** and add payment info
+
+#### Step 4: Deploy to Cloud Run
+
+1. **Navigate to Cloud Run**:
+   - In the Google Cloud Console, search for "Cloud Run" in the top search bar
+   - Click **Cloud Run** from the results
+   - Or visit: https://console.cloud.google.com/run
+
+2. **Create a new service**:
+   - Click **Create Service** (blue button)
+
+3. **Configure deployment source**:
+   - Select **Continuously deploy new revisions from a source repository**
+   - Click **Set up with Cloud Build**
+
+4. **Connect your repository**:
+   - Click **Manage Connected Repositories** → **Connect Repository**
+   - Choose **GitHub** → **Authenticate with GitHub**
+   - Select your repository (e.g., `username/PointerPals`)
+   - Click **Next**
+
+5. **Configure build**:
+   - **Branch**: Select your main branch (e.g., `main` or `master`)
+   - **Build Type**: Select **Dockerfile**
+   - **Source location**: Enter `/Server/Dockerfile` (path to your Dockerfile)
+   - Click **Save**
+
+6. **Configure service settings**:
+   - **Service name**: `pointerpals-server`
+   - **Region**: Choose closest to you (e.g., `us-central1`)
+   - **Authentication**: Select **Allow unauthenticated invocations** (so clients can connect)
+
+7. **Configure advanced settings** (click "Container, Variables & Secrets, Connections, Security"):
+   - **Container** tab:
+     - Container port: `8080`
+     - Memory: `512 MiB` (enough for WebSocket server)
+     - CPU: `1`
+     - Timeout: `3600` seconds (1 hour, allows long WebSocket connections)
+   - Leave other settings as default
+
+8. **Deploy**:
+   - Click **Create** at the bottom
+   - Wait 2-5 minutes for build and deployment
+   - You'll see build logs in real-time
+
+#### Step 5: Get Your Server URL
+
+1. Once deployed, you'll see your service URL at the top:
+   ```
+   https://pointerpals-server-xxxxx-uc.a.run.app
    ```
 
-2. **Build and deploy in one command**:
+2. **Copy this URL** - you'll need it for your client
+
+#### Step 6: Update Your Client
+
+In your Swift app (PointerPalsConfig.swift):
+
+Change:
+```swift
+static let serverURL = "ws://localhost:8080"
+```
+
+To (replace with your actual URL):
+```swift
+static let serverURL = "wss://pointerpals-server-xxxxx-uc.a.run.app"
+```
+
+**Important**: Use `wss://` instead of `ws://` for secure WebSocket connections!
+
+#### Step 7: Test Your Connection
+
+1. Rebuild and run your PointerPals app
+2. Check if it connects to your Cloud Run server
+3. View logs in Cloud Run console → **Logs** tab to see connection events
+
+---
+
+### Method B: Deploy via CLI (Alternative)
+
+If you prefer command-line deployment:
+
+1. **Install Google Cloud CLI**:
+   ```bash
+   # macOS
+   brew install google-cloud-sdk
+   ```
+
+2. **Authenticate and set project**:
+   ```bash
+   gcloud auth login
+   gcloud config set project pointerpals-server
+   ```
+
+3. **Deploy**:
    ```bash
    cd Server
    gcloud run deploy pointerpals-server \
@@ -104,30 +183,25 @@ console.log(`PointerPals WebSocket Server running on port ${PORT}`);
      --timeout 3600
    ```
 
-3. **Note your service URL**:
-   After deployment, you'll get a URL like:
-   ```
-   https://pointerpals-server-xxxxx-uc.a.run.app
-   ```
-
-4. **Update your client**:
-   Change the WebSocket URL in your Swift client from `ws://localhost:8080` to:
-   ```
-   wss://pointerpals-server-xxxxx-uc.a.run.app
-   ```
-   (Note: use `wss://` instead of `ws://` for secure WebSocket)
+---
 
 ### Updating Your Deployment
 
-To update the server:
-```bash
-cd Server
-gcloud run deploy pointerpals-server --source .
-```
+Your server will automatically redeploy when you push changes to GitHub (if using Method A).
+
+For manual updates:
+- **Web Console**: Go to Cloud Run → Select service → **Edit & Deploy New Revision**
+- **CLI**: Run `gcloud run deploy pointerpals-server --source .` again
 
 ### Monitoring and Logs
 
-View logs:
+**View Logs** (Web Console):
+1. Go to [Cloud Run Console](https://console.cloud.google.com/run)
+2. Click your service name
+3. Click **Logs** tab
+4. See real-time connection and error logs
+
+**View Logs** (CLI):
 ```bash
 gcloud run logs tail pointerpals-server
 ```
@@ -341,18 +415,59 @@ Wait for `EXTERNAL-IP` to appear, then use: `ws://[EXTERNAL-IP]:8080`
 ## Troubleshooting
 
 ### Connection Issues
-- Verify firewall rules allow WebSocket traffic
-- Check server logs: `gcloud run logs tail pointerpals-server`
-- Ensure client uses correct protocol (`ws://` or `wss://`)
+
+**Web Console Method:**
+1. Go to [Cloud Run Console](https://console.cloud.google.com/run)
+2. Click your service → **Logs** tab
+3. Look for connection errors or WebSocket upgrade failures
+4. Check that authentication is set to "Allow unauthenticated invocations"
+5. Verify your client is using `wss://` (not `ws://`)
+
+**CLI Method:**
+```bash
+gcloud run logs tail pointerpals-server
+```
+
+### Build Failures
+
+If your Cloud Run build fails:
+1. Check the **Build History** in Cloud Run console
+2. Verify Dockerfile path is correct: `/Server/Dockerfile`
+3. Ensure `package.json` exists in Server directory
+4. Check build logs for specific errors
 
 ### Performance Issues
-- Increase memory/CPU allocation
-- Scale up number of instances
-- Consider using Cloud CDN
+
+**Increase Resources (Web Console):**
+1. Go to Cloud Run → Select service
+2. Click **Edit & Deploy New Revision**
+3. Go to **Container** tab
+4. Increase:
+   - Memory: Try `1 GiB` instead of `512 MiB`
+   - CPU: Try `2` instead of `1`
+   - Max instances: Increase if you have many users
+5. Click **Deploy**
+
+**Increase Resources (CLI):**
+```bash
+gcloud run services update pointerpals-server \
+  --memory 1Gi \
+  --cpu 2 \
+  --max-instances 10
+```
 
 ### Debugging
+
+**View Detailed Logs (Web Console):**
+1. Cloud Run Console → Your service → **Logs**
+2. Use filters:
+   - Severity: Select `Error` to see only errors
+   - Time range: Adjust to see recent issues
+3. Click any log entry to see full details
+
+**View Logs (CLI):**
 ```bash
-# Cloud Run logs
+# Cloud Run logs (last 50 entries)
 gcloud run logs tail pointerpals-server --limit=50
 
 # Compute Engine logs
@@ -363,17 +478,54 @@ sudo journalctl -u pointerpals -f
 kubectl logs -f deployment/pointerpals-deployment
 ```
 
+### Common Errors
+
+**"Connection closed before receiving a handshake response"**
+- Server might be crashing on startup
+- Check logs for Node.js errors
+- Verify PORT environment variable is used in server.js
+
+**"Service Unavailable" or 502/503 errors**
+- Container might be taking too long to start
+- Increase startup timeout in container settings
+- Check if dependencies install correctly
+
+**WebSocket upgrade failed**
+- Ensure timeout is set to at least 3600 seconds
+- Verify Cloud Run allows long-lived connections
+- Check that client URL uses correct domain
+
 ---
 
 ## Next Steps
 
-1. Set up monitoring with Google Cloud Monitoring
-2. Configure auto-scaling based on load
-3. Implement health checks
-4. Set up CI/CD with Cloud Build
-5. Add environment-specific configurations
+### Via Web Console
 
-For more information, visit:
-- [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
-- [Google Compute Engine Documentation](https://cloud.google.com/compute/docs)
-- [Google Kubernetes Engine Documentation](https://cloud.google.com/kubernetes-engine/docs)
+1. **Set up monitoring**:
+   - Cloud Run → Your service → **Metrics** tab
+   - View request count, latency, memory usage
+   - Set up alerts for errors or high traffic
+
+2. **Configure auto-scaling**:
+   - Edit service → **Container** tab
+   - Set **Min instances**: `0` (for cost savings)
+   - Set **Max instances**: `10` (or higher for scale)
+
+3. **Add custom domain** (optional):
+   - Cloud Run → Your service → **Manage Custom Domains**
+   - Map your own domain (e.g., `wss://pointerpals.yourdomain.com`)
+
+4. **Set up continuous deployment**:
+   - Already configured if using Method A!
+   - Push to GitHub → Automatic build & deploy
+
+5. **Monitor costs**:
+   - Go to [Billing](https://console.cloud.google.com/billing)
+   - Check spending and set budget alerts
+
+### Additional Resources
+
+- [Cloud Run Console](https://console.cloud.google.com/run) - Manage your services
+- [Cloud Run Documentation](https://cloud.google.com/run/docs) - Full reference
+- [Cloud Run Pricing Calculator](https://cloud.google.com/products/calculator) - Estimate costs
+- [Cloud Build Documentation](https://cloud.google.com/build/docs) - CI/CD setup

@@ -142,8 +142,9 @@ The server uses a JSON-based protocol over WebSocket:
 
 **📘 [Google Cloud Hosting Guide](./GOOGLE_CLOUD_HOSTING.md)**
 
-See the complete guide for deploying to Google Cloud Platform using:
-- Cloud Run (Recommended - easiest and most cost-effective)
+See the complete guide for deploying to Google Cloud Platform:
+- **Cloud Run via Web Console** (Recommended - easiest, no CLI needed)
+- Cloud Run via CLI (Alternative command-line method)
 - Compute Engine (Traditional VM)
 - Kubernetes Engine (Production-scale)
 
