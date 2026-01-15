@@ -53,10 +53,14 @@ class NetworkManager {
             print("Invalid server URL: \(serverURL)")
             return
         }
-        
+
+        // DEBUG: Print the actual URL being used
+        print("🔌 Connecting to WebSocket server at: \(serverURL)")
+        print("🔌 URL object: \(url.absoluteString)")
+
         webSocketTask = URLSession.shared.webSocketTask(with: url)
         webSocketTask?.resume()
-        
+
         if PointerPalsConfig.debugLogging {
             print("Connecting to WebSocket server at \(serverURL)")
         }
