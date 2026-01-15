@@ -2,7 +2,8 @@
 // Simple Node.js server for cursor position sharing
 
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+const PORT = process.env.PORT || 8080;
+const wss = new WebSocket.Server({ port: PORT });
 
 // Store active connections: userId -> {ws: WebSocket, username: String}
 const clients = new Map();
@@ -10,7 +11,7 @@ const clients = new Map();
 // Store subscriptions: userId -> Set<subscribedToUserIds>
 const subscriptions = new Map();
 
-console.log('PointerPals WebSocket Server running on ws://localhost:8080');
+console.log(`PointerPals WebSocket Server running on port ${PORT}`);
 
 wss.on('connection', (ws, req) => {
   console.log('New connection from:', req.socket.remoteAddress);
