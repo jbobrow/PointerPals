@@ -210,26 +210,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showSettings() {
         let alert = NSAlert()
         alert.messageText = "Settings"
-        alert.informativeText = "Your User ID: \(networkManager.currentUserId)\n\nShare this ID with others so they can subscribe to your cursor."
+        alert.informativeText = "Share your User ID with others so they can subscribe to your cursor."
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Copy ID")
         alert.addButton(withTitle: "Close")
 
-        // Create a stack view for username input
-        let stackView = NSStackView()
-        stackView.orientation = .vertical
-        stackView.spacing = 8
-        stackView.alignment = .leading
+        // Create a container view
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 100))
 
+        // Username section
         let usernameLabel = NSTextField(labelWithString: "Username:")
-        let usernameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        usernameLabel.frame = NSRect(x: 0, y: 76, width: 100, height: 17)
+        usernameLabel.isBezeled = false
+        usernameLabel.drawsBackground = false
+        usernameLabel.isEditable = false
+        usernameLabel.isSelectable = false
+
+        let usernameField = NSTextField(frame: NSRect(x: 0, y: 50, width: 320, height: 24))
         usernameField.stringValue = networkManager.currentUsername
         usernameField.placeholderString = "Enter your username"
 
-        stackView.addArrangedSubview(usernameLabel)
-        stackView.addArrangedSubview(usernameField)
+        // User ID section
+        let userIdLabel = NSTextField(labelWithString: "Your User ID:")
+        userIdLabel.frame = NSRect(x: 0, y: 26, width: 100, height: 17)
+        userIdLabel.isBezeled = false
+        userIdLabel.drawsBackground = false
+        userIdLabel.isEditable = false
+        userIdLabel.isSelectable = false
 
-        alert.accessoryView = stackView
+        let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
+        userIdField.frame = NSRect(x: 0, y: 0, width: 320, height: 24)
+        userIdField.isBezeled = false
+        userIdField.drawsBackground = false
+        userIdField.isEditable = false
+        userIdField.isSelectable = true
+        userIdField.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        userIdField.textColor = .secondaryLabelColor
+
+        containerView.addSubview(usernameLabel)
+        containerView.addSubview(usernameField)
+        containerView.addSubview(userIdLabel)
+        containerView.addSubview(userIdField)
+
+        alert.accessoryView = containerView
         alert.window.initialFirstResponder = usernameField
 
         let response = alert.runModal()
