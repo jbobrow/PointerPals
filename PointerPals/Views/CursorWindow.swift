@@ -89,6 +89,19 @@ class CursorWindow: NSWindow {
         }
     }
 
+    func setUsernameVisibility(_ visible: Bool) {
+        if visible {
+            // Show username if we have one
+            if let username = currentUsername, !username.isEmpty {
+                usernameLabel.stringValue = username
+                usernameLabel.isHidden = false
+            }
+        } else {
+            // Always hide username
+            usernameLabel.isHidden = true
+        }
+    }
+
     func updatePosition(x: Double, y: Double) {
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.frame

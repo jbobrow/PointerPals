@@ -23,19 +23,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
     private var networkManager: NetworkManager!
+    private var showUsernames: Bool {
+        didSet {
+            UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
+            cursorManager?.setUsernameVisibility(showUsernames)
+            updateMenu()
+        }
+    }
     
+    override init() {
+        // Load username visibility preference (default: false/hidden)
+        self.showUsernames = UserDefaults.standard.object(forKey: "PointerPals_ShowUsernames") as? Bool ?? false
+        super.init()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon
         NSApp.setActivationPolicy(.accessory)
-        
+
         // Initialize managers
         networkManager = NetworkManager()
         cursorPublisher = CursorPublisher(networkManager: networkManager)
         cursorManager = CursorManager(networkManager: networkManager)
-        
+
+        // Apply username visibility setting
+        cursorManager.setUsernameVisibility(showUsernames)
+
         // Setup menu bar
         setupMenuBar()
-        
+
         // Request accessibility permissions if needed
         requestAccessibilityPermissions()
     }
@@ -66,7 +82,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func updateMenu() {
         let menu = NSMenu()
-        
+
         // Publishing status
         let publishItem = NSMenuItem(
             title: cursorPublisher.isPublishing ? "Stop Publishing" : "Start Publishing",
@@ -75,7 +91,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         publishItem.target = self
         menu.addItem(publishItem)
-        
+
+        // Show/Hide usernames toggle
+        let usernamesItem = NSMenuItem(
+            title: showUsernames ? "Hide Usernames" : "Show Usernames",
+            action: #selector(toggleUsernames),
+            keyEquivalent: "u"
+        )
+        usernamesItem.target = self
+        menu.addItem(usernamesItem)
+
         menu.addItem(NSMenuItem.separator())
         
         // Subscriptions section
@@ -144,6 +169,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         updateStatusItemTitle()
         updateMenu()
+    }
+
+    @objc private func toggleUsernames() {
+        showUsernames.toggle()
     }
     
     @objc private func unsubscribe(_ sender: NSMenuItem) {
