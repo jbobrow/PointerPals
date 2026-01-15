@@ -13,7 +13,7 @@ struct PointerPalsConfig {
     /// - Local: "ws://localhost:8080"
     /// - LAN: "ws://192.168.1.100:8080"
     /// - Production: "wss://your-server.com"
-    static let serverURL = "ws://localhost:8080"
+    static let serverURL = "wss://pointerpals-163455294213.us-east4.run.app"
     
     // MARK: - Cursor Publishing
     
