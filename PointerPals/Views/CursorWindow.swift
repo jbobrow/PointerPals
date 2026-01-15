@@ -2,23 +2,42 @@ import Cocoa
 
 class CursorWindow: NSWindow {
     private let cursorImageView: NSImageView
+    private let usernameLabel: NSTextField
     private let userId: String
-    
+    private var currentUsername: String?
+
     init(userId: String) {
         self.userId = userId
-        
+
         // Create cursor image view
         cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: PointerPalsConfig.cursorSize))
         cursorImageView.image = NSImage(named: NSImage.Name("NSCursor"))
-        
+
         // If system cursor image is not available, create a custom one
         if cursorImageView.image == nil {
             cursorImageView.image = CursorWindow.createCursorImage(size: PointerPalsConfig.cursorSize)
         }
-        
-        // Initialize window with cursor size
+
+        // Create username label
+        usernameLabel = NSTextField(labelWithString: "")
+        usernameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        usernameLabel.textColor = .white
+        usernameLabel.backgroundColor = NSColor.black.withAlphaComponent(0.7)
+        usernameLabel.isBordered = false
+        usernameLabel.isEditable = false
+        usernameLabel.alignment = .center
+        usernameLabel.wantsLayer = true
+        usernameLabel.layer?.cornerRadius = 4
+        usernameLabel.layer?.masksToBounds = true
+
+        // Calculate window size to accommodate cursor and label
+        let windowWidth = max(PointerPalsConfig.cursorSize.width, 100)
+        let windowHeight = PointerPalsConfig.cursorSize.height + 20
+        let windowSize = CGSize(width: windowWidth, height: windowHeight)
+
+        // Initialize window with calculated size
         super.init(
-            contentRect: NSRect(origin: .zero, size: PointerPalsConfig.cursorSize),
+            contentRect: NSRect(origin: .zero, size: windowSize),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -30,37 +49,69 @@ class CursorWindow: NSWindow {
         self.hasShadow = false
         self.ignoresMouseEvents = PointerPalsConfig.ignoreMouseEvents
         self.level = PointerPalsConfig.cursorWindowLevel
-        
+
         if PointerPalsConfig.appearOnAllSpaces {
             self.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         } else {
             self.collectionBehavior = [.stationary, .ignoresCycle]
         }
-        
-        // Add cursor image to window
-        self.contentView?.addSubview(cursorImageView)
-        
+
+        // Position cursor at top of window
+        cursorImageView.frame.origin = CGPoint(x: 0, y: 20)
+
+        // Position username label below cursor
+        usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: 18)
+
+        // Add subviews to window
+        if let contentView = self.contentView {
+            contentView.addSubview(cursorImageView)
+            contentView.addSubview(usernameLabel)
+        }
+
         // Start hidden (will fade in on first update)
         self.alphaValue = 0.0
-        
+
         // Show the window
         self.orderFrontRegardless()
-        
+
         if PointerPalsConfig.debugLogging {
             print("Created cursor window for \(userId)")
         }
     }
     
+    func updateUsername(_ username: String?) {
+        if let username = username, !username.isEmpty {
+            currentUsername = username
+            usernameLabel.stringValue = username
+            usernameLabel.isHidden = false
+        } else {
+            usernameLabel.isHidden = true
+        }
+    }
+
+    func setUsernameVisibility(_ visible: Bool) {
+        if visible {
+            // Show username if we have one
+            if let username = currentUsername, !username.isEmpty {
+                usernameLabel.stringValue = username
+                usernameLabel.isHidden = false
+            }
+        } else {
+            // Always hide username
+            usernameLabel.isHidden = true
+        }
+    }
+
     func updatePosition(x: Double, y: Double) {
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.frame
-        
+
         // Convert normalized coordinates to screen coordinates
         let screenX = x * screenFrame.width
         let screenY = y * screenFrame.height
-        
+
         let targetOrigin = CGPoint(x: screenX, y: screenY)
-        
+
         // Animate to new position
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = PointerPalsConfig.cursorAnimationDuration

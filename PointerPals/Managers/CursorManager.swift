@@ -6,7 +6,8 @@ class CursorManager {
     private var cursorWindows: [String: CursorWindow] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var inactivityTimers: [String: Timer] = [:]
-    
+    private var shouldShowUsernames: Bool = false
+
     var activeSubscriptions: [String] {
         Array(cursorWindows.keys)
     }
@@ -52,27 +53,43 @@ class CursorManager {
             window.close()
             cursorWindows.removeValue(forKey: userId)
         }
-        
+
         inactivityTimers[userId]?.invalidate()
         inactivityTimers.removeValue(forKey: userId)
-        
+
         networkManager.unsubscribeFrom(userId: userId)
-        
+
         print("Unsubscribed from \(userId)")
+    }
+
+    func setUsernameVisibility(_ visible: Bool) {
+        shouldShowUsernames = visible
+
+        // Update all existing cursor windows
+        for window in cursorWindows.values {
+            window.setUsernameVisibility(visible)
+        }
     }
     
     private func handleCursorUpdate(_ cursorData: CursorData) {
         guard let window = cursorWindows[cursorData.userId] else {
             return
         }
-        
+
         // Cancel existing inactivity timer
         inactivityTimers[cursorData.userId]?.invalidate()
-        
+
+        // Update username if available and visibility is enabled
+        if shouldShowUsernames {
+            window.updateUsername(cursorData.username)
+        } else {
+            window.updateUsername(nil)
+        }
+
         // Fade in if needed and update position
         window.fadeIn()
         window.updatePosition(x: cursorData.x, y: cursorData.y)
-        
+
         // Start new inactivity timer
         let timer = Timer.scheduledTimer(
             withTimeInterval: PointerPalsConfig.inactivityTimeout,
@@ -82,7 +99,7 @@ class CursorManager {
             self?.inactivityTimers[cursorData.userId]?.invalidate()
             self?.inactivityTimers.removeValue(forKey: cursorData.userId)
         }
-        
+
         inactivityTimers[cursorData.userId] = timer
     }
     

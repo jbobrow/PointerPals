@@ -2,15 +2,16 @@
 // Simple Node.js server for cursor position sharing
 
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+const PORT = process.env.PORT || 8080;
+const wss = new WebSocket.Server({ port: PORT });
 
-// Store active connections: userId -> WebSocket
+// Store active connections: userId -> {ws: WebSocket, username: String}
 const clients = new Map();
 
 // Store subscriptions: userId -> Set<subscribedToUserIds>
 const subscriptions = new Map();
 
-console.log('PointerPals WebSocket Server running on ws://localhost:8080');
+console.log(`PointerPals WebSocket Server running on port ${PORT}`);
 
 wss.on('connection', (ws, req) => {
   console.log('New connection from:', req.socket.remoteAddress);
@@ -25,17 +26,19 @@ wss.on('connection', (ws, req) => {
         case 'register':
           // Register a new user
           currentUserId = data.userId;
-          clients.set(currentUserId, ws);
-          
+          const username = data.username || 'User';
+          clients.set(currentUserId, { ws, username });
+
           if (!subscriptions.has(currentUserId)) {
             subscriptions.set(currentUserId, new Set());
           }
-          
-          console.log(`User registered: ${currentUserId}`);
-          
+
+          console.log(`User registered: ${currentUserId} (${username})`);
+
           ws.send(JSON.stringify({
             type: 'registered',
             userId: currentUserId,
+            username: username,
             message: 'Successfully connected to PointerPals server'
           }));
           break;
@@ -82,16 +85,22 @@ wss.on('connection', (ws, req) => {
         case 'cursor_update':
           // Broadcast cursor position to subscribers
           if (!currentUserId) return;
-          
+
           const cursorData = data.cursorData;
-          
+
+          // Ensure username is included in cursor data
+          const clientInfo = clients.get(currentUserId);
+          if (clientInfo && clientInfo.username) {
+            cursorData.username = clientInfo.username;
+          }
+
           // Find all users who are subscribed to this user
           for (const [userId, subscribedToSet] of subscriptions.entries()) {
             if (subscribedToSet.has(currentUserId)) {
               const client = clients.get(userId);
-              
-              if (client && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
+
+              if (client && client.ws && client.ws.readyState === WebSocket.OPEN) {
+                client.ws.send(JSON.stringify({
                   type: 'cursor_update',
                   cursorData: cursorData
                 }));
@@ -127,8 +136,8 @@ wss.on('connection', (ws, req) => {
 
 // Periodic cleanup of stale connections
 setInterval(() => {
-  clients.forEach((ws, userId) => {
-    if (ws.readyState === WebSocket.CLOSED) {
+  clients.forEach((client, userId) => {
+    if (client.ws && client.ws.readyState === WebSocket.CLOSED) {
       console.log(`Cleaning up stale connection: ${userId}`);
       clients.delete(userId);
       subscriptions.delete(userId);

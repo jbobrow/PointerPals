@@ -60,6 +60,7 @@ class CursorPublisher {
         
         let cursorData = CursorData(
             userId: networkManager.currentUserId,
+            username: networkManager.currentUsername,
             x: normalizedX,
             y: normalizedY,
             timestamp: Date()

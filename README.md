@@ -5,10 +5,12 @@ A macOS application that allows you to share your cursor position with others an
 ## Features
 
 - **Cursor Publishing**: Share your normalized cursor position in real-time
+- **Usernames**: Set your username and see others' names displayed with their cursors
 - **Cursor Subscriptions**: Subscribe to others' cursors and see them as transparent overlay windows
 - **Auto-fade**: Subscribed cursors fade out after 5 seconds of inactivity
 - **Menu Bar App**: Lightweight menu bar integration showing publishing status and subscription count
 - **Always On Top**: Subscribed cursors appear above all windows but don't block interactions
+- **WebSocket Server**: Fully functional server included with Google Cloud deployment guide
 
 ## Project Structure
 
@@ -58,9 +60,31 @@ PointerPals/
    - Press Cmd+R or Product > Run
    - Grant accessibility permissions when prompted
 
-## Implementing the Network Backend
+## WebSocket Server
 
-The current `NetworkManager.swift` is a skeleton that needs to be connected to a real backend. Here are your options:
+A complete WebSocket server is included in the `Server/` directory with full support for:
+- User registration with usernames
+- Publish/Subscribe pattern for cursor updates
+- Automatic cleanup of stale connections
+- Real-time broadcasting with low latency
+
+**📘 [See Server Documentation](./Server/README.md)**
+
+**☁️ [Google Cloud Hosting Guide](./Server/GOOGLE_CLOUD_HOSTING.md)** - Deploy to Cloud Run, Compute Engine, or GKE
+
+### Quick Start (Local Server)
+
+```bash
+cd Server
+npm install
+npm start
+```
+
+The server will run on `ws://localhost:8080`
+
+## Alternative Network Backends
+
+If you prefer not to use the included WebSocket server, here are alternative options:
 
 ### Option 1: WebSocket Server (Recommended)
 
@@ -199,6 +223,15 @@ Use Network.framework for local network discovery and P2P connections (no server
 - Click any subscription to unsubscribe
 - Subscribed cursors fade out after 5 seconds of inactivity
 
+### Setting Your Username
+
+1. Click PointerPals menu bar icon
+2. Select "Settings..."
+3. Enter your desired username
+4. Click "Save"
+
+Your username will be displayed above your cursor when others subscribe to you.
+
 ### Finding Your User ID
 
 1. Click PointerPals menu bar icon
@@ -263,14 +296,16 @@ private let cursorSize: CGSize = CGSize(width: 20, height: 28)
 
 ## Future Enhancements
 
+- [x] Cursor labels showing user names
+- [x] WebSocket server implementation
+- [x] Cloud hosting documentation
 - [ ] Custom cursor colors/styles for each user
-- [ ] Cursor labels showing user names
 - [ ] Drawing mode (leave a trail)
 - [ ] Presence indicators
 - [ ] Multi-monitor support
 - [ ] Cursor history replay
 - [ ] Screen resolution synchronization
-- [ ] Encrypted connections
+- [ ] Encrypted connections (WSS support included in server)
 - [ ] User authentication
 - [ ] Group subscriptions/rooms
 
