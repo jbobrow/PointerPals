@@ -408,10 +408,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func stopDemoCursor() {
         print("🎯 Stopping demo cursor")
+
+        // Capture window reference to prevent premature deallocation
+        let windowToClose = demoCursorWindow
+
+        // Clean up timer and reference immediately
         demoTimer?.invalidate()
         demoTimer = nil
-        demoCursorWindow?.close()
         demoCursorWindow = nil
+
+        // Update menu on main thread
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenu()
+
+            // Close window after menu update
+            windowToClose?.close()
+        }
     }
 
     @objc private func quit() {
