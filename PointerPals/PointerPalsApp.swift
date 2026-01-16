@@ -23,7 +23,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
     private var networkManager: NetworkManager!
-    private var accessibilityCheckTimer: Timer?
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -297,33 +296,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func requestAccessibilityPermissions() {
-        // Check immediately
-        checkAndPromptForAccessibility()
-
-        // Start timer to check every 5 seconds until granted
-        accessibilityCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            self?.checkAndPromptForAccessibility()
-        }
-    }
-
-    private func checkAndPromptForAccessibility() {
+        // Check once on app launch
         let accessibilityEnabled = AXIsProcessTrusted()
 
         if accessibilityEnabled {
-            // Stop checking once permissions are granted
-            accessibilityCheckTimer?.invalidate()
-            accessibilityCheckTimer = nil
             print("✅ Accessibility permissions granted")
         } else {
-            // Show system prompt
+            // Show system prompt once
             let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
             AXIsProcessTrustedWithOptions(options as CFDictionary)
-
             print("⚠️ Accessibility permissions required - Please enable in System Settings")
         }
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        accessibilityCheckTimer?.invalidate()
     }
 }
