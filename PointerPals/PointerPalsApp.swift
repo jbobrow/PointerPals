@@ -322,6 +322,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let fps: Double = 60.0
         let totalFrames = Int(duration * fps)
         var currentFrame = 0
+        var hasStartedFadeOut = false // Track if we've already started fading out
 
         // Set initial position
         demoCursorWindow?.updatePosition(x: 0.5, y: 0.3)
@@ -360,12 +361,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Update cursor position
                 self.demoCursorWindow?.updatePosition(x: x, y: y)
 
-                // Fade out in the last 10% of animation
-                if progress > 0.9 && currentFrame % 3 == 0 {
-                    let fadeProgress = (progress - 0.9) / 0.1
-                    if fadeProgress > 0.5 {
-                        self.demoCursorWindow?.fadeOut()
-                    }
+                // Fade out in the last 10% of animation (only once)
+                if progress > 0.9 && !hasStartedFadeOut {
+                    hasStartedFadeOut = true
+                    self.demoCursorWindow?.fadeOut()
                 }
 
                 // Stop when complete
@@ -388,16 +387,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Clear reference immediately
         demoCursorWindow = nil
 
-        // CRITICAL: Remove ALL animations from the window
-        // This prevents crash from animations trying to access deallocated window
+        // CRITICAL: Thoroughly clean up all animations and views
+        // Remove all window-level animations
         window.animations = [:]
+
+        // Remove all layer animations from window and content view
+        window.layer?.removeAllAnimations()
+        window.contentView?.layer?.removeAllAnimations()
+        window.contentView?.subviews.forEach { subview in
+            subview.layer?.removeAllAnimations()
+            subview.animations = [:]
+        }
 
         // Hide window immediately (no animation)
         window.alphaValue = 0.0
         window.orderOut(nil)
 
-        // Close and update menu after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        // Close after a longer delay to ensure all animation completion handlers have run
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             window.close()
             self?.updateMenu()
         }
@@ -411,14 +418,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let window = demoCursorWindow {
             demoCursorWindow = nil
 
-            // Remove all animations
+            // Thoroughly remove all animations
             window.animations = [:]
+            window.layer?.removeAllAnimations()
+            window.contentView?.layer?.removeAllAnimations()
+            window.contentView?.subviews.forEach { subview in
+                subview.layer?.removeAllAnimations()
+                subview.animations = [:]
+            }
 
-            // Stop animations
+            // Hide window immediately
             window.alphaValue = 0.0
             window.orderOut(nil)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 window.close()
             }
         }
