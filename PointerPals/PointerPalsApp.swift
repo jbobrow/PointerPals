@@ -314,17 +314,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startDemoCursor() {
-        print("🎯 Creating demo cursor window...")
-
         // Create demo cursor window
         demoCursorWindow = CursorWindow(userId: "demo")
-
-        guard demoCursorWindow != nil else {
-            print("❌ Failed to create demo cursor window")
-            return
-        }
-
-        print("✅ Demo cursor window created, setting username")
         demoCursorWindow?.updateUsername("Hello from PointerPals!")
 
         let duration: TimeInterval = 6.0 // Total animation duration in seconds
@@ -332,50 +323,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let totalFrames = Int(duration * fps)
         var currentFrame = 0
 
-        // Set initial position first
-        print("🎯 Setting initial position to center top")
+        // Set initial position
         demoCursorWindow?.updatePosition(x: 0.5, y: 0.3)
 
-        // Delay slightly to ensure window is ready, then start animation
+        // Start animation after brief delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self = self else { return }
 
-            print("🎯 Fading in cursor")
             self.demoCursorWindow?.fadeIn()
 
-            print("🎯 Starting animation timer (60 FPS for 6 seconds)")
             self.demoTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
-                guard let self = self else {
-                    print("⚠️ Self deallocated, stopping timer")
-                    timer.invalidate()
-                    return
-                }
-
-                guard self.demoCursorWindow != nil else {
-                    print("⚠️ Demo window deallocated, stopping timer")
+                guard let self = self, self.demoCursorWindow != nil else {
                     timer.invalidate()
                     return
                 }
 
                 currentFrame += 1
-
-                if currentFrame == 1 {
-                    print("🎯 Animation frame 1")
-                } else if currentFrame % 60 == 0 {
-                    print("🎯 Animation frame \(currentFrame)/\(totalFrames)")
-                }
-
                 let progress = Double(currentFrame) / Double(totalFrames)
 
                 // Ease-in-out function: smoothstep
                 let eased = progress * progress * (3.0 - 2.0 * progress)
 
                 // Calculate angle (0 = 12 o'clock, goes clockwise)
-                let startAngle = -Double.pi / 2 // -90 degrees (12 o'clock)
-                let angle = startAngle + (eased * 2.0 * Double.pi) // Full 360-degree rotation
+                let startAngle = -Double.pi / 2
+                let angle = startAngle + (eased * 2.0 * Double.pi)
 
                 // Circle parameters (centered on screen)
-                let radius = 0.2 // 20% of screen size
+                let radius = 0.2
                 let centerX = 0.5
                 let centerY = 0.5
 
@@ -396,7 +370,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 // Stop when complete
                 if currentFrame >= totalFrames {
-                    print("🎯 Animation complete after \(currentFrame) frames")
                     timer.invalidate()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         self.stopDemoCursor()
@@ -407,8 +380,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func stopDemoCursor() {
-        print("🎯 Stopping demo cursor")
-
         // Capture window reference to prevent premature deallocation
         let windowToClose = demoCursorWindow
 
@@ -417,12 +388,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         demoTimer = nil
         demoCursorWindow = nil
 
-        // Update menu on main thread
+        // Delay menu update and window close to avoid CA commit conflicts
         DispatchQueue.main.async { [weak self] in
-            self?.updateMenu()
-
-            // Close window after menu update
-            windowToClose?.close()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                windowToClose?.close()
+                self?.updateMenu()
+            }
         }
     }
 

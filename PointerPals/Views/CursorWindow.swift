@@ -74,12 +74,9 @@ class CursorWindow: NSWindow {
         // Show the window
         self.orderFrontRegardless()
 
-        print("✅ Created cursor window for \(userId)")
-        print("   Window frame: \(self.frame)")
-        print("   Window level: \(self.level.rawValue)")
-        print("   Window alpha: \(self.alphaValue)")
-        print("   Is visible: \(self.isVisible)")
-        print("   Is on screen: \(self.isOnActiveSpace)")
+        if PointerPalsConfig.debugLogging {
+            print("Created cursor window for \(userId)")
+        }
     }
     
     func updateUsername(_ username: String?) {
@@ -106,10 +103,7 @@ class CursorWindow: NSWindow {
     }
 
     func updatePosition(x: Double, y: Double) {
-        guard let screen = NSScreen.main else {
-            print("⚠️ No main screen found")
-            return
-        }
+        guard let screen = NSScreen.main else { return }
         let screenFrame = screen.frame
 
         // Convert normalized coordinates to screen coordinates
@@ -118,19 +112,7 @@ class CursorWindow: NSWindow {
 
         let targetOrigin = CGPoint(x: screenX, y: screenY)
 
-        // Log first position update
-        if self.frame.origin.x == 0 && self.frame.origin.y == 0 {
-            print("📍 First position update:")
-            print("   Normalized: (\(x), \(y))")
-            print("   Screen size: \(screenFrame.size)")
-            print("   Screen coords: (\(screenX), \(screenY))")
-            print("   Current alpha: \(self.alphaValue)")
-        }
-
-        // Set position immediately for debugging
-        self.setFrameOrigin(targetOrigin)
-
-        // Also try animated version
+        // Animate to new position
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = PointerPalsConfig.cursorAnimationDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -139,23 +121,11 @@ class CursorWindow: NSWindow {
     }
     
     func fadeIn() {
-        guard self.alphaValue < PointerPalsConfig.activeCursorOpacity else {
-            print("⚠️ fadeIn called but already visible: \(self.alphaValue)")
-            return
-        }
+        guard self.alphaValue < PointerPalsConfig.activeCursorOpacity else { return }
 
-        print("🎨 Fading in cursor window from \(self.alphaValue) to \(PointerPalsConfig.activeCursorOpacity)")
-
-        // Set immediately for debugging
-        self.alphaValue = PointerPalsConfig.activeCursorOpacity
-        print("🎨 Alpha value set to: \(self.alphaValue)")
-
-        // Also try animated version
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = PointerPalsConfig.fadeInDuration
             self.animator().alphaValue = PointerPalsConfig.activeCursorOpacity
-        }, completionHandler: {
-            print("🎨 Fade in animation complete, final alpha: \(self.alphaValue)")
         })
     }
     
