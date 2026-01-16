@@ -382,7 +382,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         yPos -= 26
         let cursorSizeSlider = NSSlider(frame: NSRect(x: 0, y: yPos, width: 270, height: 24))
         cursorSizeSlider.minValue = 0.5
-        cursorSizeSlider.maxValue = 2.0
+        cursorSizeSlider.maxValue = 1.0
         cursorSizeSlider.doubleValue = Double(cursorScale)
         cursorSizeSlider.numberOfTickMarks = 6
         cursorSizeSlider.isContinuous = false  // Only update on mouse release
@@ -498,7 +498,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             self.demoCursorWindow?.fadeIn()
 
-            self.demoTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
+            // Create timer that works even during modal dialogs
+            let timer = Timer(timeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
                 guard let self = self, self.demoCursorWindow != nil else {
                     timer.invalidate()
                     return
@@ -543,6 +544,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
             }
+
+            // Add timer to run loop with common mode so it works during modal dialogs
+            RunLoop.current.add(timer, forMode: .common)
+            self.demoTimer = timer
         }
     }
 
