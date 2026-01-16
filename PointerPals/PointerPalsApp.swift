@@ -489,6 +489,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var currentFrame = 0
         var hasStartedFadeOut = false // Track if we've already started fading out
 
+        // Get screen dimensions to calculate perfect circle
+        guard let screen = NSScreen.main else { return }
+        let screenWidth = screen.frame.width
+        let screenHeight = screen.frame.height
+        let aspectRatio = screenWidth / screenHeight
+
         // Set initial position
         demoCursorWindow?.updatePosition(x: 0.5, y: 0.3)
 
@@ -516,13 +522,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let angle = startAngle + (eased * 2.0 * Double.pi)
 
                 // Circle parameters (centered on screen)
-                let radius = 0.2
+                // Use smaller radius in Y to account for aspect ratio and make perfect circle
+                let radiusY = 0.2
+                let radiusX = radiusY / aspectRatio
                 let centerX = 0.5
                 let centerY = 0.5
 
                 // Calculate position on circle
-                let x = centerX + (radius * cos(angle))
-                let y = centerY + (radius * sin(angle))
+                let x = centerX + (radiusX * cos(angle))
+                let y = centerY + (radiusY * sin(angle))
 
                 // Update cursor position
                 self.demoCursorWindow?.updatePosition(x: x, y: y)
@@ -541,6 +549,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     // Cleanup after fade out completes
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                         self?.cleanupDemoCursor()
+                        // Update button title if Settings window is still open
+                        self?.updateDemoButtonTitle()
                     }
                 }
             }
@@ -585,6 +595,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Note: updateMenu() is called by toggleDemoCursor() which calls this method
+    }
+
+    private func updateDemoButtonTitle() {
+        // Find any open settings window and update the demo button
+        for window in NSApp.windows {
+            if window.contentView?.subviews.first?.subviews.contains(where: { view in
+                (view as? NSButton)?.action == #selector(toggleDemoCursorFromSettings(_:))
+            }) == true {
+                // Found the settings window, find and update the button
+                if let containerView = window.contentView?.subviews.first,
+                   let demoButton = containerView.subviews.first(where: {
+                       ($0 as? NSButton)?.action == #selector(toggleDemoCursorFromSettings(_:))
+                   }) as? NSButton {
+                    demoButton.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
+                }
+            }
+        }
     }
 
     @objc private func quit() {
