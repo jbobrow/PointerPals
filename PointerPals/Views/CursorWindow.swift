@@ -12,12 +12,9 @@ class CursorWindow: NSWindow {
 
         // Create cursor image view
         cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: PointerPalsConfig.cursorSize))
-        cursorImageView.image = NSImage(named: NSImage.Name("NSCursor"))
 
-        // If system cursor image is not available, create a custom one
-        if cursorImageView.image == nil {
-            cursorImageView.image = CursorWindow.createCursorImage(size: PointerPalsConfig.cursorSize)
-        }
+        // Use the system arrow cursor image
+        cursorImageView.image = NSCursor.arrow.image
 
         // Create username label
         usernameLabel = NSTextField(labelWithString: "")
@@ -218,12 +215,9 @@ struct CursorWindowPreview: NSViewRepresentable {
 
         // Create cursor image view
         let cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: cursorSize))
-        cursorImageView.image = NSImage(named: NSImage.Name("NSCursor"))
 
-        // If system cursor image is not available, create a custom one
-        if cursorImageView.image == nil {
-            cursorImageView.image = CursorWindow.createCursorImage(size: cursorSize)
-        }
+        // Use the system arrow cursor image
+        cursorImageView.image = NSCursor.arrow.image
 
         // Create username label
         let usernameLabel = NSTextField(labelWithString: "")
