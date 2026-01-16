@@ -25,6 +25,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cursorManager: CursorManager!
     private var networkManager: NetworkManager!
     private var cancellables = Set<AnyCancellable>()
+    private var demoCursorWindow: CursorWindow?
+    private var demoTimer: Timer?
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -109,7 +111,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(usernamesItem)
 
         menu.addItem(NSMenuItem.separator())
-        
+
+        // Demo cursor
+        let demoItem = NSMenuItem(
+            title: demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor",
+            action: #selector(toggleDemoCursor),
+            keyEquivalent: "d"
+        )
+        demoItem.target = self
+        menu.addItem(demoItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         // Subscriptions section
         let subsHeader = NSMenuItem(title: "Subscriptions", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
@@ -291,7 +304,87 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    @objc private func toggleDemoCursor() {
+        if demoCursorWindow != nil {
+            stopDemoCursor()
+        } else {
+            startDemoCursor()
+        }
+        updateMenu()
+    }
+
+    private func startDemoCursor() {
+        // Create demo cursor window
+        demoCursorWindow = CursorWindow(userId: "demo")
+        demoCursorWindow?.updateUsername("Hello from PointerPals!")
+
+        let duration: TimeInterval = 6.0 // Total animation duration in seconds
+        let fps: Double = 60.0
+        let totalFrames = Int(duration * fps)
+        var currentFrame = 0
+
+        // Fade in
+        demoCursorWindow?.fadeIn()
+
+        print("🎯 Starting demo cursor animation")
+
+        demoTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
+            guard let self = self, let window = self.demoCursorWindow else {
+                timer.invalidate()
+                return
+            }
+
+            currentFrame += 1
+            let progress = Double(currentFrame) / Double(totalFrames)
+
+            // Ease-in-out function: smoothstep
+            let eased = progress * progress * (3.0 - 2.0 * progress)
+
+            // Calculate angle (0 = 12 o'clock, goes clockwise)
+            // Starting at 12 o'clock means starting at -90 degrees (or 270 degrees)
+            let startAngle = -Double.pi / 2 // -90 degrees (12 o'clock)
+            let angle = startAngle + (eased * 2.0 * Double.pi) // Full 360-degree rotation
+
+            // Circle parameters (centered on screen)
+            let radius = 0.2 // 20% of screen size
+            let centerX = 0.5
+            let centerY = 0.5
+
+            // Calculate position on circle
+            let x = centerX + (radius * cos(angle))
+            let y = centerY + (radius * sin(angle))
+
+            // Update cursor position
+            window.updatePosition(x: x, y: y)
+
+            // Fade out in the last 10% of animation
+            if progress > 0.9 && currentFrame % 3 == 0 {
+                let fadeProgress = (progress - 0.9) / 0.1
+                if fadeProgress > 0.5 {
+                    window.fadeOut()
+                }
+            }
+
+            // Stop when complete
+            if currentFrame >= totalFrames {
+                timer.invalidate()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.stopDemoCursor()
+                }
+            }
+        }
+    }
+
+    private func stopDemoCursor() {
+        print("🎯 Stopping demo cursor")
+        demoTimer?.invalidate()
+        demoTimer = nil
+        demoCursorWindow?.close()
+        demoCursorWindow = nil
+    }
+
     @objc private func quit() {
+        stopDemoCursor()
         NSApplication.shared.terminate(nil)
     }
 }
