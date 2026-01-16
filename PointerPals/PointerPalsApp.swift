@@ -76,12 +76,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func updateStatusItemTitle() {
         guard let button = statusItem.button else { return }
-        
+
         let isPublishing = cursorPublisher.isPublishing
-        let subCount = cursorManager.activeSubscriptions.count
-        
+        let subCount = cursorManager.allSubscriptions.count
+
         let icon = isPublishing ? PointerPalsConfig.publishingIcon : PointerPalsConfig.notPublishingIcon
-        
+
         if PointerPalsConfig.showSubscriptionCount {
             button.title = "\(icon) \(subCount)"
         } else {
@@ -124,25 +124,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         // Subscriptions section
-        let subsHeader = NSMenuItem(title: "Subscriptions", action: nil, keyEquivalent: "")
+        let subsHeader = NSMenuItem(title: "Subscriptions (click to toggle, right-click to delete)", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
         menu.addItem(subsHeader)
-        
-        if cursorManager.activeSubscriptions.isEmpty {
-            let noSubs = NSMenuItem(title: "  No active subscriptions", action: nil, keyEquivalent: "")
+
+        if cursorManager.allSubscriptions.isEmpty {
+            let noSubs = NSMenuItem(title: "  No subscriptions", action: nil, keyEquivalent: "")
             noSubs.isEnabled = false
             menu.addItem(noSubs)
         } else {
-            for userId in cursorManager.activeSubscriptions {
+            for userId in cursorManager.allSubscriptions {
+                let isEnabled = cursorManager.isSubscriptionEnabled(userId)
+
                 let subItem = NSMenuItem()
-                subItem.action = #selector(unsubscribe(_:))
+                subItem.action = #selector(toggleSubscription(_:))
                 subItem.keyEquivalent = ""
                 subItem.target = self
                 subItem.representedObject = userId
 
                 // Create attributed string with username and grey userId
                 let username = cursorManager.getUsername(for: userId) ?? "User"
-                let displayText = "  👤 \(username) (\(userId))"
+                let stateIcon = isEnabled ? "✓" : "○"
+                let displayText = "  \(stateIcon) \(username) (\(userId))"
 
                 let attributedTitle = NSMutableAttributedString(string: displayText)
 
@@ -155,7 +158,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     attributedTitle.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: userIdRange)
                 }
 
+                // Dim disabled subscriptions
+                if !isEnabled {
+                    attributedTitle.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: NSRange(location: 0, length: attributedTitle.length))
+                }
+
                 subItem.attributedTitle = attributedTitle
+
+                // Add context menu for delete option
+                let contextMenu = NSMenu()
+                let deleteItem = NSMenuItem(title: "Delete Subscription", action: #selector(deleteSubscription(_:)), keyEquivalent: "")
+                deleteItem.target = self
+                deleteItem.representedObject = userId
+                contextMenu.addItem(deleteItem)
+                subItem.submenu = contextMenu
+
                 menu.addItem(subItem)
             }
         }
@@ -213,10 +230,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleUsernames() {
         showUsernames.toggle()
     }
-    
-    @objc private func unsubscribe(_ sender: NSMenuItem) {
+
+    @objc private func toggleSubscription(_ sender: NSMenuItem) {
         if let userId = sender.representedObject as? String {
-            cursorManager.unsubscribe(from: userId)
+            cursorManager.toggleSubscription(userId)
+
+            // Defer menu update to avoid crash when updating menu while it's active
+            DispatchQueue.main.async { [weak self] in
+                self?.updateStatusItemTitle()
+                self?.updateMenu()
+            }
+        }
+    }
+
+    @objc private func deleteSubscription(_ sender: NSMenuItem) {
+        if let userId = sender.representedObject as? String {
+            cursorManager.deleteSubscription(userId)
 
             // Defer menu update to avoid crash when updating menu while it's active
             DispatchQueue.main.async { [weak self] in

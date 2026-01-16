@@ -8,6 +8,7 @@ class CursorManager {
     private var inactivityTimers: [String: Timer] = [:]
     private var shouldShowUsernames: Bool = false
     private var usernames: [String: String] = [:] // userId -> username mapping
+    private var subscriptionStates: [String: Bool] = [:] // userId -> isEnabled
 
     // Notification when subscriptions or usernames change
     let subscriptionsDidChange = PassthroughSubject<Void, Never>()
@@ -15,13 +16,18 @@ class CursorManager {
     // UserDefaults keys for persistence
     private let subscriptionsKey = "PointerPals_Subscriptions"
     private let usernamesKey = "PointerPals_SubscriptionUsernames"
+    private let subscriptionStatesKey = "PointerPals_SubscriptionStates"
 
-    var activeSubscriptions: [String] {
-        Array(cursorWindows.keys)
+    var allSubscriptions: [String] {
+        Array(subscriptionStates.keys)
     }
 
     func getUsername(for userId: String) -> String? {
         return usernames[userId]
+    }
+
+    func isSubscriptionEnabled(_ userId: String) -> Bool {
+        return subscriptionStates[userId] ?? false
     }
     
     init(networkManager: NetworkManager) {
@@ -47,9 +53,10 @@ class CursorManager {
     }
 
     private func saveSubscriptions() {
-        let subscriptionList = Array(cursorWindows.keys)
+        let subscriptionList = Array(subscriptionStates.keys)
         UserDefaults.standard.set(subscriptionList, forKey: subscriptionsKey)
         UserDefaults.standard.set(usernames, forKey: usernamesKey)
+        UserDefaults.standard.set(subscriptionStates, forKey: subscriptionStatesKey)
     }
 
     private func loadSubscriptions() {
@@ -58,30 +65,42 @@ class CursorManager {
             usernames = savedUsernames
         }
 
-        // Load and restore subscriptions
-        if let savedSubscriptions = UserDefaults.standard.array(forKey: subscriptionsKey) as? [String] {
+        // Load subscription states
+        if let savedStates = UserDefaults.standard.dictionary(forKey: subscriptionStatesKey) as? [String: Bool] {
+            subscriptionStates = savedStates
+        }
+
+        // Load and restore subscriptions (for backwards compatibility, if states not found)
+        if subscriptionStates.isEmpty,
+           let savedSubscriptions = UserDefaults.standard.array(forKey: subscriptionsKey) as? [String] {
             for userId in savedSubscriptions {
-                subscribe(to: userId)
+                subscriptionStates[userId] = true
             }
+        }
+
+        // Enable all subscriptions that are marked as enabled
+        for (userId, isEnabled) in subscriptionStates where isEnabled {
+            enableSubscription(userId: userId)
         }
     }
     
     func subscribe(to userId: String) {
-        guard cursorWindows[userId] == nil else {
-            print("Already subscribed to \(userId)")
+        // Check if already exists
+        if subscriptionStates[userId] != nil {
+            print("Subscription already exists for \(userId)")
             return
         }
 
         // Check max subscriptions limit
         if PointerPalsConfig.maxSubscriptions > 0 &&
-           cursorWindows.count >= PointerPalsConfig.maxSubscriptions {
+           subscriptionStates.count >= PointerPalsConfig.maxSubscriptions {
             print("Maximum subscription limit reached (\(PointerPalsConfig.maxSubscriptions))")
             return
         }
 
-        let window = CursorWindow(userId: userId)
-        cursorWindows[userId] = window
-        networkManager.subscribeTo(userId: userId)
+        // Add subscription in enabled state
+        subscriptionStates[userId] = true
+        enableSubscription(userId: userId)
 
         // Save subscriptions to persist across launches
         saveSubscriptions()
@@ -93,8 +112,54 @@ class CursorManager {
             print("Subscribed to \(userId)")
         }
     }
-    
-    func unsubscribe(from userId: String) {
+
+    func toggleSubscription(_ userId: String) {
+        guard let isEnabled = subscriptionStates[userId] else {
+            print("No subscription found for \(userId)")
+            return
+        }
+
+        if isEnabled {
+            disableSubscription(userId: userId)
+        } else {
+            enableSubscription(userId: userId)
+        }
+
+        subscriptionStates[userId] = !isEnabled
+        saveSubscriptions()
+        subscriptionsDidChange.send()
+
+        print("\(isEnabled ? "Disabled" : "Enabled") subscription for \(userId)")
+    }
+
+    func deleteSubscription(_ userId: String) {
+        // Disable first if enabled
+        if subscriptionStates[userId] == true {
+            disableSubscription(userId: userId)
+        }
+
+        // Remove from all collections
+        subscriptionStates.removeValue(forKey: userId)
+        usernames.removeValue(forKey: userId)
+
+        // Save and notify
+        saveSubscriptions()
+        subscriptionsDidChange.send()
+
+        print("Deleted subscription for \(userId)")
+    }
+
+    private func enableSubscription(userId: String) {
+        guard cursorWindows[userId] == nil else {
+            return
+        }
+
+        let window = CursorWindow(userId: userId)
+        cursorWindows[userId] = window
+        networkManager.subscribeTo(userId: userId)
+    }
+
+    private func disableSubscription(userId: String) {
         if let window = cursorWindows[userId] {
             // Hide window and let it deallocate naturally to avoid crashes
             // DO NOT call close() - causes crashes when animation handlers access the window
@@ -105,18 +170,7 @@ class CursorManager {
         inactivityTimers[userId]?.invalidate()
         inactivityTimers.removeValue(forKey: userId)
 
-        // Clean up stored username
-        usernames.removeValue(forKey: userId)
-
         networkManager.unsubscribeFrom(userId: userId)
-
-        // Save subscriptions to persist across launches
-        saveSubscriptions()
-
-        // Notify that subscriptions changed
-        subscriptionsDidChange.send()
-
-        print("Unsubscribed from \(userId)")
     }
 
     func setUsernameVisibility(_ visible: Bool) {
