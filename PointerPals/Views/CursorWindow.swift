@@ -15,7 +15,7 @@ class CursorWindow: NSWindow {
         let naturalCursorSize = cursorImage.size
 
         // Scale cursor to desired size (0.5 = half size, 0.75 = 75% size, etc.)
-        let cursorScale: CGFloat = 0.5
+        let cursorScale: CGFloat = 0.75
         let scaledCursorSize = CGSize(
             width: naturalCursorSize.width * cursorScale,
             height: naturalCursorSize.height * cursorScale
@@ -37,7 +37,7 @@ class CursorWindow: NSWindow {
         usernameLabel.layer?.masksToBounds = true
 
         // Calculate window size to accommodate cursor and label
-        let labelHeight: CGFloat = 18
+        let labelHeight: CGFloat = 11
         let windowWidth = max(scaledCursorSize.width, 100)
         let windowHeight = scaledCursorSize.height + labelHeight
         let windowSize = CGSize(width: windowWidth, height: windowHeight)
@@ -64,7 +64,7 @@ class CursorWindow: NSWindow {
         }
 
         // Position cursor above the username label
-        cursorImageView.frame.origin = CGPoint(x: 0, y: labelHeight)
+        cursorImageView.frame.origin = CGPoint(x: 0, y: 0)
 
         // Position username label at the bottom
         usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: labelHeight)
