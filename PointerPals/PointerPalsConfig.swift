@@ -67,13 +67,16 @@ struct PointerPalsConfig {
     static let ignoreMouseEvents = true
     
     // MARK: - User Interface
-    
-    /// Menu bar icon when publishing
-    static let publishingIcon = "📍"
-    
-    /// Menu bar icon when not publishing
-    static let notPublishingIcon = "💤"
-    
+
+    /// Menu bar icon when publishing (regardless of subscriptions)
+    static let publishingIcon = "cursorarrow.rays"
+
+    /// Menu bar icon when not publishing but has active subscriptions
+    static let activeSubscriptionsIcon = "cursorarrow.click.2"
+
+    /// Menu bar icon when idle (not publishing and no active subscriptions)
+    static let idleIcon = "cursorarrow"
+
     /// Show subscription count in menu bar
     static let showSubscriptionCount = true
     

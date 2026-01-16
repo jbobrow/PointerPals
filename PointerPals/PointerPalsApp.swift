@@ -53,10 +53,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Apply username visibility setting
         cursorManager.setUsernameVisibility(showUsernames)
 
-        // Subscribe to subscription changes to update menu
+        // Subscribe to subscription changes to update menu and status
         cursorManager.subscriptionsDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
+                self?.updateStatusItemTitle()
                 self?.updateMenu()
             }
             .store(in: &cancellables)
@@ -67,10 +68,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        
+
         guard statusItem.button != nil else { return }
-        statusItem.button?.title = "..."
-        
+
+        // Set initial icon and title
+        updateStatusItemTitle()
         updateMenu()
     }
     
@@ -80,12 +82,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let isPublishing = cursorPublisher.isPublishing
         let subCount = cursorManager.activeSubscriptionsCount
 
-        let icon = isPublishing ? PointerPalsConfig.publishingIcon : PointerPalsConfig.notPublishingIcon
-
-        if PointerPalsConfig.showSubscriptionCount {
-            button.title = "\(icon) \(subCount)"
+        // Determine which icon to use based on state
+        let iconName: String
+        if isPublishing {
+            iconName = PointerPalsConfig.publishingIcon
+        } else if subCount > 0 {
+            iconName = PointerPalsConfig.activeSubscriptionsIcon
         } else {
-            button.title = icon
+            iconName = PointerPalsConfig.idleIcon
+        }
+
+        // Load SF Symbol icon
+        if let icon = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
+            button.image = icon
+            button.imagePosition = .imageLeading
+
+            if PointerPalsConfig.showSubscriptionCount {
+                button.title = " \(subCount)"
+            } else {
+                button.title = ""
+            }
+        } else {
+            // Fallback if SF Symbol not available
+            button.image = nil
+            button.title = isPublishing ? "📍" : (subCount > 0 ? "👀" : "💤")
+            if PointerPalsConfig.showSubscriptionCount {
+                button.title += " \(subCount)"
+            }
         }
     }
     
