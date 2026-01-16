@@ -314,8 +314,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startDemoCursor() {
+        print("🎯 Creating demo cursor window...")
+
         // Create demo cursor window
         demoCursorWindow = CursorWindow(userId: "demo")
+
+        guard demoCursorWindow != nil else {
+            print("❌ Failed to create demo cursor window")
+            return
+        }
+
+        print("✅ Demo cursor window created, setting username")
         demoCursorWindow?.updateUsername("Hello from PointerPals!")
 
         let duration: TimeInterval = 6.0 // Total animation duration in seconds
@@ -323,53 +332,75 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let totalFrames = Int(duration * fps)
         var currentFrame = 0
 
-        // Fade in
-        demoCursorWindow?.fadeIn()
+        // Set initial position first
+        print("🎯 Setting initial position to center top")
+        demoCursorWindow?.updatePosition(x: 0.5, y: 0.3)
 
-        print("🎯 Starting demo cursor animation")
+        // Delay slightly to ensure window is ready, then start animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
 
-        demoTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
-            guard let self = self, let window = self.demoCursorWindow else {
-                timer.invalidate()
-                return
-            }
+            print("🎯 Fading in cursor")
+            self.demoCursorWindow?.fadeIn()
 
-            currentFrame += 1
-            let progress = Double(currentFrame) / Double(totalFrames)
-
-            // Ease-in-out function: smoothstep
-            let eased = progress * progress * (3.0 - 2.0 * progress)
-
-            // Calculate angle (0 = 12 o'clock, goes clockwise)
-            // Starting at 12 o'clock means starting at -90 degrees (or 270 degrees)
-            let startAngle = -Double.pi / 2 // -90 degrees (12 o'clock)
-            let angle = startAngle + (eased * 2.0 * Double.pi) // Full 360-degree rotation
-
-            // Circle parameters (centered on screen)
-            let radius = 0.2 // 20% of screen size
-            let centerX = 0.5
-            let centerY = 0.5
-
-            // Calculate position on circle
-            let x = centerX + (radius * cos(angle))
-            let y = centerY + (radius * sin(angle))
-
-            // Update cursor position
-            window.updatePosition(x: x, y: y)
-
-            // Fade out in the last 10% of animation
-            if progress > 0.9 && currentFrame % 3 == 0 {
-                let fadeProgress = (progress - 0.9) / 0.1
-                if fadeProgress > 0.5 {
-                    window.fadeOut()
+            print("🎯 Starting animation timer (60 FPS for 6 seconds)")
+            self.demoTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
+                guard let self = self else {
+                    print("⚠️ Self deallocated, stopping timer")
+                    timer.invalidate()
+                    return
                 }
-            }
 
-            // Stop when complete
-            if currentFrame >= totalFrames {
-                timer.invalidate()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.stopDemoCursor()
+                guard self.demoCursorWindow != nil else {
+                    print("⚠️ Demo window deallocated, stopping timer")
+                    timer.invalidate()
+                    return
+                }
+
+                currentFrame += 1
+
+                if currentFrame == 1 {
+                    print("🎯 Animation frame 1")
+                } else if currentFrame % 60 == 0 {
+                    print("🎯 Animation frame \(currentFrame)/\(totalFrames)")
+                }
+
+                let progress = Double(currentFrame) / Double(totalFrames)
+
+                // Ease-in-out function: smoothstep
+                let eased = progress * progress * (3.0 - 2.0 * progress)
+
+                // Calculate angle (0 = 12 o'clock, goes clockwise)
+                let startAngle = -Double.pi / 2 // -90 degrees (12 o'clock)
+                let angle = startAngle + (eased * 2.0 * Double.pi) // Full 360-degree rotation
+
+                // Circle parameters (centered on screen)
+                let radius = 0.2 // 20% of screen size
+                let centerX = 0.5
+                let centerY = 0.5
+
+                // Calculate position on circle
+                let x = centerX + (radius * cos(angle))
+                let y = centerY + (radius * sin(angle))
+
+                // Update cursor position
+                self.demoCursorWindow?.updatePosition(x: x, y: y)
+
+                // Fade out in the last 10% of animation
+                if progress > 0.9 && currentFrame % 3 == 0 {
+                    let fadeProgress = (progress - 0.9) / 0.1
+                    if fadeProgress > 0.5 {
+                        self.demoCursorWindow?.fadeOut()
+                    }
+                }
+
+                // Stop when complete
+                if currentFrame >= totalFrames {
+                    print("🎯 Animation complete after \(currentFrame) frames")
+                    timer.invalidate()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.stopDemoCursor()
+                    }
                 }
             }
         }
