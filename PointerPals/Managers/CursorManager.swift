@@ -12,6 +12,10 @@ class CursorManager {
     // Notification when subscriptions or usernames change
     let subscriptionsDidChange = PassthroughSubject<Void, Never>()
 
+    // UserDefaults keys for persistence
+    private let subscriptionsKey = "PointerPals_Subscriptions"
+    private let usernamesKey = "PointerPals_SubscriptionUsernames"
+
     var activeSubscriptions: [String] {
         Array(cursorWindows.keys)
     }
@@ -23,6 +27,7 @@ class CursorManager {
     init(networkManager: NetworkManager) {
         self.networkManager = networkManager
         setupSubscriptions()
+        loadSubscriptions()
     }
     
     private func setupSubscriptions() {
@@ -39,6 +44,26 @@ class CursorManager {
                 self?.handleUsernameUpdate(userId: userId, username: username)
             }
             .store(in: &cancellables)
+    }
+
+    private func saveSubscriptions() {
+        let subscriptionList = Array(cursorWindows.keys)
+        UserDefaults.standard.set(subscriptionList, forKey: subscriptionsKey)
+        UserDefaults.standard.set(usernames, forKey: usernamesKey)
+    }
+
+    private func loadSubscriptions() {
+        // Load saved usernames first
+        if let savedUsernames = UserDefaults.standard.dictionary(forKey: usernamesKey) as? [String: String] {
+            usernames = savedUsernames
+        }
+
+        // Load and restore subscriptions
+        if let savedSubscriptions = UserDefaults.standard.array(forKey: subscriptionsKey) as? [String] {
+            for userId in savedSubscriptions {
+                subscribe(to: userId)
+            }
+        }
     }
     
     func subscribe(to userId: String) {
@@ -57,6 +82,9 @@ class CursorManager {
         let window = CursorWindow(userId: userId)
         cursorWindows[userId] = window
         networkManager.subscribeTo(userId: userId)
+
+        // Save subscriptions to persist across launches
+        saveSubscriptions()
 
         // Notify that subscriptions changed
         subscriptionsDidChange.send()
@@ -79,6 +107,9 @@ class CursorManager {
         usernames.removeValue(forKey: userId)
 
         networkManager.unsubscribeFrom(userId: userId)
+
+        // Save subscriptions to persist across launches
+        saveSubscriptions()
 
         // Notify that subscriptions changed
         subscriptionsDidChange.send()
@@ -110,8 +141,9 @@ class CursorManager {
             usernameChanged = false
         }
 
-        // Notify subscribers if username changed
+        // Notify subscribers and persist if username changed
         if usernameChanged {
+            saveSubscriptions()
             subscriptionsDidChange.send()
         }
 
@@ -145,6 +177,9 @@ class CursorManager {
     private func handleUsernameUpdate(userId: String, username: String) {
         // Update stored username
         usernames[userId] = username
+
+        // Persist the updated username
+        saveSubscriptions()
 
         // Update the cursor window if usernames are visible
         if shouldShowUsernames, let window = cursorWindows[userId] {
