@@ -1,4 +1,5 @@
 import Cocoa
+import SwiftUI
 
 class CursorWindow: NSWindow {
     private let cursorImageView: NSImageView
@@ -170,3 +171,133 @@ class CursorWindow: NSWindow {
         return image
     }
 }
+
+// MARK: - SwiftUI Preview Support
+
+/// SwiftUI wrapper for previewing CursorWindow content
+struct CursorWindowPreview: NSViewRepresentable {
+    let showUsername: Bool
+    let username: String
+    let cursorSize: CGSize
+
+    func makeNSView(context: Context) -> NSView {
+        let containerView = NSView()
+        containerView.wantsLayer = true
+        containerView.layer?.backgroundColor = NSColor.systemGray.withAlphaComponent(0.3).cgColor
+
+        // Create cursor image view
+        let cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: cursorSize))
+        cursorImageView.image = NSImage(named: NSImage.Name("NSCursor"))
+
+        // If system cursor image is not available, create a custom one
+        if cursorImageView.image == nil {
+            cursorImageView.image = CursorWindow.createCursorImage(size: cursorSize)
+        }
+
+        // Create username label
+        let usernameLabel = NSTextField(labelWithString: username)
+        usernameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        usernameLabel.textColor = .white
+        usernameLabel.backgroundColor = NSColor.black.withAlphaComponent(0.7)
+        usernameLabel.isBordered = false
+        usernameLabel.isEditable = false
+        usernameLabel.alignment = .center
+        usernameLabel.wantsLayer = true
+        usernameLabel.layer?.cornerRadius = 4
+        usernameLabel.layer?.masksToBounds = true
+
+        let windowWidth = max(cursorSize.width, 100)
+
+        // Position cursor at top
+        cursorImageView.frame.origin = CGPoint(x: (windowWidth - cursorSize.width) / 2, y: 20)
+
+        // Position username label below cursor
+        usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: 18)
+        usernameLabel.isHidden = !showUsername
+
+        // Add subviews
+        containerView.addSubview(cursorImageView)
+        containerView.addSubview(usernameLabel)
+
+        return containerView
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Update if needed
+    }
+}
+
+#if DEBUG
+#Preview("Cursor with Username") {
+    CursorWindowPreview(
+        showUsername: true,
+        username: "Alice",
+        cursorSize: PointerPalsConfig.cursorSize
+    )
+    .frame(width: 120, height: 60)
+}
+
+#Preview("Cursor without Username") {
+    CursorWindowPreview(
+        showUsername: false,
+        username: "Alice",
+        cursorSize: PointerPalsConfig.cursorSize
+    )
+    .frame(width: 120, height: 60)
+}
+
+#Preview("Large Cursor with Long Username") {
+    CursorWindowPreview(
+        showUsername: true,
+        username: "SuperLongUsername",
+        cursorSize: CGSize(width: 24, height: 32)
+    )
+    .frame(width: 150, height: 70)
+}
+
+#Preview("Small Cursor") {
+    CursorWindowPreview(
+        showUsername: true,
+        username: "Bob",
+        cursorSize: CGSize(width: 16, height: 22)
+    )
+    .frame(width: 100, height: 50)
+}
+
+#Preview("Multiple States") {
+    VStack(spacing: 20) {
+        HStack(spacing: 20) {
+            CursorWindowPreview(
+                showUsername: true,
+                username: "Alice",
+                cursorSize: PointerPalsConfig.cursorSize
+            )
+            .frame(width: 120, height: 60)
+
+            CursorWindowPreview(
+                showUsername: true,
+                username: "Bob",
+                cursorSize: PointerPalsConfig.cursorSize
+            )
+            .frame(width: 120, height: 60)
+        }
+
+        HStack(spacing: 20) {
+            CursorWindowPreview(
+                showUsername: false,
+                username: "Charlie",
+                cursorSize: PointerPalsConfig.cursorSize
+            )
+            .frame(width: 120, height: 60)
+
+            CursorWindowPreview(
+                showUsername: true,
+                username: "Dave with long name",
+                cursorSize: PointerPalsConfig.cursorSize
+            )
+            .frame(width: 150, height: 60)
+        }
+    }
+    .padding()
+}
+#endif
