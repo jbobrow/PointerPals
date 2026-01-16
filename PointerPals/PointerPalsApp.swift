@@ -322,6 +322,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let fps: Double = 60.0
         let totalFrames = Int(duration * fps)
         var currentFrame = 0
+        var hasStartedFadeOut = false // Track if we've already started fading out
 
         // Set initial position
         demoCursorWindow?.updatePosition(x: 0.5, y: 0.3)
@@ -360,12 +361,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Update cursor position
                 self.demoCursorWindow?.updatePosition(x: x, y: y)
 
-                // Fade out in the last 10% of animation
-                if progress > 0.9 && currentFrame % 3 == 0 {
-                    let fadeProgress = (progress - 0.9) / 0.1
-                    if fadeProgress > 0.5 {
-                        self.demoCursorWindow?.fadeOut()
-                    }
+                // Fade out in the last 10% of animation (only once)
+                if progress > 0.9 && !hasStartedFadeOut {
+                    hasStartedFadeOut = true
+                    self.demoCursorWindow?.fadeOut()
                 }
 
                 // Stop when complete
@@ -385,24 +384,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func cleanupDemoCursor() {
         guard let window = demoCursorWindow else { return }
 
-        // Clear reference immediately
+        // Clear reference so menu updates
         demoCursorWindow = nil
 
-        // Stop ALL animations to prevent use-after-free
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0
-            window.animator().alphaValue = 0
-        }, completionHandler: nil)
-
-        // Hide window immediately
-        window.alphaValue = 0.0
+        // Hide the window - it will deallocate naturally when all animation
+        // completion handlers release their references
+        // DO NOT call close() - this causes crashes when animation handlers
+        // try to access the window after it's been explicitly closed
         window.orderOut(nil)
 
-        // Close and update menu after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            window.close()
-            self?.updateMenu()
-        }
+        // Update menu to show "Show Demo Cursor" again
+        updateMenu()
+
+        // Window will be deallocated automatically when:
+        // 1. All NSAnimationContext completion handlers finish
+        // 2. All animator() proxy references are released
+        // 3. No other strong references remain
     }
 
     private func stopDemoCursor() {
@@ -413,13 +410,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let window = demoCursorWindow {
             demoCursorWindow = nil
 
-            // Stop animations
-            window.alphaValue = 0.0
+            // Hide window - let it deallocate naturally when animations finish
             window.orderOut(nil)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                window.close()
-            }
         }
 
         updateMenu()
