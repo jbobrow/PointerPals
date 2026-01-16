@@ -32,6 +32,13 @@ class CursorManager {
                 self?.handleCursorUpdate(cursorData)
             }
             .store(in: &cancellables)
+
+        networkManager.usernameUpdatePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (userId, username) in
+                self?.handleUsernameUpdate(userId: userId, username: username)
+            }
+            .store(in: &cancellables)
     }
     
     func subscribe(to userId: String) {
@@ -133,6 +140,19 @@ class CursorManager {
         }
 
         inactivityTimers[cursorData.userId] = timer
+    }
+
+    private func handleUsernameUpdate(userId: String, username: String) {
+        // Update stored username
+        usernames[userId] = username
+
+        // Update the cursor window if usernames are visible
+        if shouldShowUsernames, let window = cursorWindows[userId] {
+            window.updateUsername(username)
+        }
+
+        // Notify that subscriptions changed (to update menu)
+        subscriptionsDidChange.send()
     }
     
     deinit {
