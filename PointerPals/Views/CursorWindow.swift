@@ -141,7 +141,7 @@ class CursorWindow: NSWindow {
     }
     
     // Create a custom cursor image if system image is unavailable
-    private static func createCursorImage(size: CGSize) -> NSImage {
+    static func createCursorImage(size: CGSize) -> NSImage {
         let image = NSImage(size: size)
         
         image.lockFocus()
