@@ -314,10 +314,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 240))
-
-        var yPos: CGFloat = 240
-
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 270))
+ 
+        var yPos: CGFloat = 270
+        
         // Username section with inline save
         let usernameLabel = NSTextField(labelWithString: "Username:")
         usernameLabel.frame = NSRect(x: 20, y: yPos - 20, width: 80, height: 17)
@@ -338,7 +338,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         saveUsernameButton.target = self
         saveUsernameButton.action = #selector(saveUsernameFromSettings(_:))
 
-        yPos -= 66
+        yPos -= 76
 
         // User ID section
         let userIdLabel = NSTextField(labelWithString: "Your User ID:")
@@ -348,10 +348,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         userIdLabel.isEditable = false
         userIdLabel.isSelectable = false
         userIdLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-
-        yPos -= 24
+                
         let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        userIdField.frame = NSRect(x: 20, y: yPos, width: 340, height: 20)
+        userIdField.frame = NSRect(x: 110, y: yPos - 4, width: 220, height: 20)
         userIdField.isBezeled = false
         userIdField.drawsBackground = false
         userIdField.isEditable = false
@@ -424,7 +423,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         cursorSizeSlider.minValue = 0.5
         cursorSizeSlider.maxValue = 1.0
         cursorSizeSlider.doubleValue = Double(cursorScale)
-        cursorSizeSlider.numberOfTickMarks = 6
+        cursorSizeSlider.numberOfTickMarks = 5
+        cursorSizeSlider.allowsTickMarkValuesOnly = true
         cursorSizeSlider.isContinuous = false
         cursorSizeSlider.target = self
         cursorSizeSlider.action = #selector(cursorSizeSliderChanged(_:))
