@@ -23,6 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
     private var networkManager: NetworkManager!
+    private var accessibilityCheckTimer: Timer?
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -165,10 +166,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if cursorPublisher.isPublishing {
             cursorPublisher.stopPublishing()
         } else {
+            // Check for accessibility permissions before starting
+            if !AXIsProcessTrusted() {
+                showAccessibilityAlert()
+                return
+            }
             cursorPublisher.startPublishing()
         }
         updateStatusItemTitle()
         updateMenu()
+    }
+
+    private func showAccessibilityAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permission Required"
+        alert.informativeText = "PointerPals needs accessibility permissions to read your cursor position.\n\nPlease:\n1. Click 'Open System Settings'\n2. Enable PointerPals in the Accessibility list\n3. Return to PointerPals and try again"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Open System Settings to Accessibility
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+        }
     }
 
     @objc private func toggleUsernames() {
@@ -274,9 +297,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func requestAccessibilityPermissions() {
-        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        let accessibilityEnabled = AXIsProcessTrusted()  // ✅ Call without args
-        if !accessibilityEnabled {
-            AXIsProcessTrustedWithOptions(options as CFDictionary)  // ✅ Use the WITH options version
-        }    }
+        // Check immediately
+        checkAndPromptForAccessibility()
+
+        // Start timer to check every 5 seconds until granted
+        accessibilityCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.checkAndPromptForAccessibility()
+        }
+    }
+
+    private func checkAndPromptForAccessibility() {
+        let accessibilityEnabled = AXIsProcessTrusted()
+
+        if accessibilityEnabled {
+            // Stop checking once permissions are granted
+            accessibilityCheckTimer?.invalidate()
+            accessibilityCheckTimer = nil
+            print("✅ Accessibility permissions granted")
+        } else {
+            // Show system prompt
+            let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+            AXIsProcessTrustedWithOptions(options as CFDictionary)
+
+            print("⚠️ Accessibility permissions required - Please enable in System Settings")
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        accessibilityCheckTimer?.invalidate()
+    }
 }
