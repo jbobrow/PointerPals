@@ -94,7 +94,16 @@ class CursorWindow: NSWindow {
     func updateUsername(_ username: String?) {
         if let username = username, !username.isEmpty {
             currentUsername = username
-            usernameLabel.stringValue = username
+
+            // Create attributed string with outline
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+                .foregroundColor: NSColor.white,
+                .strokeColor: NSColor.black,
+                .strokeWidth: -3.0  // Negative for fill + stroke, positive for stroke only
+            ]
+
+            usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
             usernameLabel.isHidden = false
         } else {
             usernameLabel.isHidden = true
@@ -105,7 +114,15 @@ class CursorWindow: NSWindow {
         if visible {
             // Show username if we have one
             if let username = currentUsername, !username.isEmpty {
-                usernameLabel.stringValue = username
+                // Create attributed string with outline
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+                    .foregroundColor: NSColor.white,
+                    .strokeColor: NSColor.black,
+                    .strokeWidth: -3.0  // Negative for fill + stroke
+                ]
+
+                usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
                 usernameLabel.isHidden = false
             }
         } else {
@@ -122,7 +139,10 @@ class CursorWindow: NSWindow {
         let screenX = x * screenFrame.width
         let screenY = y * screenFrame.height
 
-        let targetOrigin = CGPoint(x: screenX, y: screenY)
+        // Offset the window position to account for cursor being at y: 20 within the window
+        // This allows the cursor to reach all the way to the bottom of the screen
+        let cursorOffsetY: CGFloat = 20
+        let targetOrigin = CGPoint(x: screenX, y: screenY - cursorOffsetY)
 
         // Set position immediately first
         self.setFrameOrigin(targetOrigin)
@@ -206,9 +226,7 @@ struct CursorWindowPreview: NSViewRepresentable {
         }
 
         // Create username label
-        let usernameLabel = NSTextField(labelWithString: username)
-        usernameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        usernameLabel.textColor = .white
+        let usernameLabel = NSTextField(labelWithString: "")
         usernameLabel.backgroundColor = NSColor.black.withAlphaComponent(0.7)
         usernameLabel.isBordered = false
         usernameLabel.isEditable = false
@@ -216,6 +234,15 @@ struct CursorWindowPreview: NSViewRepresentable {
         usernameLabel.wantsLayer = true
         usernameLabel.layer?.cornerRadius = 4
         usernameLabel.layer?.masksToBounds = true
+
+        // Create attributed string with outline
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: NSColor.white,
+            .strokeColor: NSColor.black,
+            .strokeWidth: -3.0  // Negative for fill + stroke
+        ]
+        usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
 
         let windowWidth = max(cursorSize.width, 100)
 
