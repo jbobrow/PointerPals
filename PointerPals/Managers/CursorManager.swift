@@ -22,6 +22,10 @@ class CursorManager {
         Array(subscriptionStates.keys)
     }
 
+    var activeSubscriptionsCount: Int {
+        subscriptionStates.values.filter { $0 }.count
+    }
+
     func getUsername(for userId: String) -> String? {
         return usernames[userId]
     }

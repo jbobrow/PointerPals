@@ -78,7 +78,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = statusItem.button else { return }
 
         let isPublishing = cursorPublisher.isPublishing
-        let subCount = cursorManager.allSubscriptions.count
+        let subCount = cursorManager.activeSubscriptionsCount
 
         let icon = isPublishing ? PointerPalsConfig.publishingIcon : PointerPalsConfig.notPublishingIcon
 
