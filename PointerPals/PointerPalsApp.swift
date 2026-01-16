@@ -314,9 +314,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 280))
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 240))
 
-        var yPos: CGFloat = 280
+        var yPos: CGFloat = 240
 
         // Username section with inline save
         let usernameLabel = NSTextField(labelWithString: "Username:")
@@ -378,7 +378,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         yPos -= 30
 
-        // Display Preferences header
+        // Display Preferences header with inline Demo button
         let preferencesHeader = NSTextField(labelWithString: "Display Preferences")
         preferencesHeader.frame = NSRect(x: 20, y: yPos, width: 200, height: 17)
         preferencesHeader.isBezeled = false
@@ -386,6 +386,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         preferencesHeader.isEditable = false
         preferencesHeader.isSelectable = false
         preferencesHeader.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+
+        // Demo button (inline, right-aligned)
+        let demoCursorButton = NSButton(frame: NSRect(x: 290, y: yPos - 2, width: 70, height: 24))
+        demoCursorButton.title = "Demo"
+        demoCursorButton.bezelStyle = .rounded
+        demoCursorButton.target = self
+        demoCursorButton.action = #selector(toggleDemoCursorFromSettings(_:))
+
+        // Store weak reference for updates when animation completes
+        self.demoButton = demoCursorButton
 
         yPos -= 30
 
@@ -429,18 +439,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sizeValueLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
         sizeValueLabel.textColor = .secondaryLabelColor
         sizeValueLabel.tag = 999
-
-        yPos -= 48
-
-        // Demo Cursor button (centered)
-        let demoCursorButton = NSButton(frame: NSRect(x: 110, y: yPos, width: 160, height: 32))
-        demoCursorButton.title = "Demo Cursor"
-        demoCursorButton.bezelStyle = .rounded
-        demoCursorButton.target = self
-        demoCursorButton.action = #selector(toggleDemoCursorFromSettings(_:))
-
-        // Store weak reference for updates when animation completes
-        self.demoButton = demoCursorButton
 
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
