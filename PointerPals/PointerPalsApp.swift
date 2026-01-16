@@ -124,12 +124,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         // Subscriptions section
-        let subsHeader = NSMenuItem(title: "Subscriptions (click to toggle, right-click for options)", action: nil, keyEquivalent: "")
+        let subsHeader = NSMenuItem(title: "Subscriptions", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
         menu.addItem(subsHeader)
 
         if cursorManager.allSubscriptions.isEmpty {
-            let noSubs = NSMenuItem(title: "  No subscriptions", action: nil, keyEquivalent: "")
+            let noSubs = NSMenuItem(title: "--None yet--", action: nil, keyEquivalent: "")
             noSubs.isEnabled = false
             menu.addItem(noSubs)
         } else {
