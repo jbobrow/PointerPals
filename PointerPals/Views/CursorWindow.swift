@@ -7,7 +7,7 @@ class CursorWindow: NSWindow {
     private let userId: String
     private var currentUsername: String?
 
-    init(userId: String) {
+    init(userId: String, cursorScale: CGFloat = PointerPalsConfig.defaultCursorScale) {
         self.userId = userId
 
         // Get the system arrow cursor image and use its natural size
@@ -15,7 +15,6 @@ class CursorWindow: NSWindow {
         let naturalCursorSize = cursorImage.size
 
         // Scale cursor to desired size (0.5 = half size, 0.75 = 75% size, etc.)
-        let cursorScale: CGFloat = 0.75
         let scaledCursorSize = CGSize(
             width: naturalCursorSize.width * cursorScale,
             height: naturalCursorSize.height * cursorScale

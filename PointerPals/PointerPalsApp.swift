@@ -31,13 +31,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
             cursorManager?.setUsernameVisibility(showUsernames)
-            updateMenu()
         }
     }
-    
+
+    private var cursorScale: CGFloat {
+        didSet {
+            UserDefaults.standard.set(cursorScale, forKey: "PointerPals_CursorScale")
+            cursorManager?.setCursorScale(cursorScale)
+        }
+    }
+
     override init() {
         // Load username visibility preference (default: false/hidden)
         self.showUsernames = UserDefaults.standard.object(forKey: "PointerPals_ShowUsernames") as? Bool ?? false
+
+        // Load cursor scale preference (default: 0.5)
+        self.cursorScale = UserDefaults.standard.object(forKey: "PointerPals_CursorScale") as? CGFloat ?? PointerPalsConfig.defaultCursorScale
+
         super.init()
     }
 
@@ -48,7 +58,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize managers
         networkManager = NetworkManager()
         cursorPublisher = CursorPublisher(networkManager: networkManager)
-        cursorManager = CursorManager(networkManager: networkManager)
+        cursorManager = CursorManager(networkManager: networkManager, cursorScale: cursorScale)
 
         // Apply username visibility setting
         cursorManager.setUsernameVisibility(showUsernames)
@@ -123,26 +133,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         publishItem.target = self
         menu.addItem(publishItem)
-
-        // Show/Hide usernames toggle
-        let usernamesItem = NSMenuItem(
-            title: showUsernames ? "Hide Usernames" : "Show Usernames",
-            action: #selector(toggleUsernames),
-            keyEquivalent: "u"
-        )
-        usernamesItem.target = self
-        menu.addItem(usernamesItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        // Demo cursor
-        let demoItem = NSMenuItem(
-            title: demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor",
-            action: #selector(toggleDemoCursor),
-            keyEquivalent: "d"
-        )
-        demoItem.target = self
-        menu.addItem(demoItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -319,36 +309,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showSettings() {
         let alert = NSAlert()
         alert.messageText = "Settings"
-        alert.informativeText = "Share your User ID with others so they can subscribe to your cursor."
+        alert.informativeText = "Configure PointerPals preferences and share your User ID."
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Copy ID")
         alert.addButton(withTitle: "Close")
 
-        // Create a container view
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 100))
+        // Create a container view (increased height for new controls)
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 210))
+
+        var yPos: CGFloat = 190
 
         // Username section
         let usernameLabel = NSTextField(labelWithString: "Username:")
-        usernameLabel.frame = NSRect(x: 0, y: 76, width: 100, height: 17)
+        usernameLabel.frame = NSRect(x: 0, y: yPos, width: 100, height: 17)
         usernameLabel.isBezeled = false
         usernameLabel.drawsBackground = false
         usernameLabel.isEditable = false
         usernameLabel.isSelectable = false
 
-        let usernameField = NSTextField(frame: NSRect(x: 0, y: 50, width: 320, height: 24))
+        yPos -= 26
+        let usernameField = NSTextField(frame: NSRect(x: 0, y: yPos, width: 320, height: 24))
         usernameField.stringValue = networkManager.currentUsername
         usernameField.placeholderString = "Enter your username"
 
         // User ID section
+        yPos -= 24
         let userIdLabel = NSTextField(labelWithString: "Your User ID:")
-        userIdLabel.frame = NSRect(x: 0, y: 26, width: 100, height: 17)
+        userIdLabel.frame = NSRect(x: 0, y: yPos, width: 100, height: 17)
         userIdLabel.isBezeled = false
         userIdLabel.drawsBackground = false
         userIdLabel.isEditable = false
         userIdLabel.isSelectable = false
 
+        yPos -= 26
         let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        userIdField.frame = NSRect(x: 0, y: 0, width: 320, height: 24)
+        userIdField.frame = NSRect(x: 0, y: yPos, width: 320, height: 24)
         userIdField.isBezeled = false
         userIdField.drawsBackground = false
         userIdField.isEditable = false
@@ -356,13 +351,65 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         userIdField.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         userIdField.textColor = .secondaryLabelColor
 
+        // Show Usernames checkbox
+        yPos -= 28
+        let usernamesCheckbox = NSButton(frame: NSRect(x: 0, y: yPos, width: 200, height: 18))
+        usernamesCheckbox.setButtonType(.switch)
+        usernamesCheckbox.title = "Show Usernames"
+        usernamesCheckbox.state = showUsernames ? .on : .off
+
+        // Cursor Size slider
+        yPos -= 24
+        let cursorSizeLabel = NSTextField(labelWithString: "Cursor Size:")
+        cursorSizeLabel.frame = NSRect(x: 0, y: yPos, width: 100, height: 17)
+        cursorSizeLabel.isBezeled = false
+        cursorSizeLabel.drawsBackground = false
+        cursorSizeLabel.isEditable = false
+        cursorSizeLabel.isSelectable = false
+
+        yPos -= 26
+        let cursorSizeSlider = NSSlider(frame: NSRect(x: 0, y: yPos, width: 250, height: 24))
+        cursorSizeSlider.minValue = 0.3  // 30% of natural size
+        cursorSizeSlider.maxValue = 1.0  // 100% of natural size
+        cursorSizeSlider.doubleValue = Double(cursorScale)
+        cursorSizeSlider.isContinuous = true
+
+        let sizeValueLabel = NSTextField(labelWithString: "\(Int(cursorScale * 100))%")
+        sizeValueLabel.frame = NSRect(x: 260, y: yPos, width: 60, height: 24)
+        sizeValueLabel.isBezeled = false
+        sizeValueLabel.drawsBackground = false
+        sizeValueLabel.isEditable = false
+        sizeValueLabel.isSelectable = false
+        sizeValueLabel.alignment = .right
+
+        // Update label when slider changes
+        cursorSizeSlider.target = self
+        cursorSizeSlider.action = #selector(cursorSizeSliderChanged(_:))
+
+        // Show Demo Cursor button
+        yPos -= 32
+        let demoCursorButton = NSButton(frame: NSRect(x: 0, y: yPos, width: 160, height: 28))
+        demoCursorButton.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
+        demoCursorButton.bezelStyle = .rounded
+        demoCursorButton.target = self
+        demoCursorButton.action = #selector(toggleDemoCursorFromSettings(_:))
+
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
         containerView.addSubview(userIdLabel)
         containerView.addSubview(userIdField)
+        containerView.addSubview(usernamesCheckbox)
+        containerView.addSubview(cursorSizeLabel)
+        containerView.addSubview(cursorSizeSlider)
+        containerView.addSubview(sizeValueLabel)
+        containerView.addSubview(demoCursorButton)
 
         alert.accessoryView = containerView
         alert.window.initialFirstResponder = usernameField
+
+        // Store slider and label references for updates
+        alert.window.contentView?.viewWithTag(999)?.removeFromSuperview()
+        sizeValueLabel.tag = 999
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -371,11 +418,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if !newUsername.isEmpty {
                 networkManager.currentUsername = newUsername
             }
+
+            // Save show usernames preference
+            showUsernames = usernamesCheckbox.state == .on
+
+            // Save cursor scale
+            cursorScale = CGFloat(cursorSizeSlider.doubleValue)
         } else if response == .alertSecondButtonReturn {
             // Copy ID
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(networkManager.currentUserId, forType: .string)
         }
+    }
+
+    @objc private func cursorSizeSliderChanged(_ sender: NSSlider) {
+        // Update the value label
+        if let window = sender.window,
+           let containerView = window.contentView?.subviews.first(where: { $0 is NSView }),
+           let sizeLabel = containerView.subviews.first(where: { $0.tag == 999 }) as? NSTextField {
+            sizeLabel.stringValue = "\(Int(sender.doubleValue * 100))%"
+        }
+    }
+
+    @objc private func toggleDemoCursorFromSettings(_ sender: NSButton) {
+        toggleDemoCursor()
+        // Update button title
+        sender.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
     }
     
     @objc private func toggleDemoCursor() {

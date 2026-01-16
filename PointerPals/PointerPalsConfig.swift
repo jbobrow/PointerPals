@@ -27,10 +27,14 @@ struct PointerPalsConfig {
     static let onlyPublishOnChange = true
     
     // MARK: - Cursor Display
-    
+
     /// Size of the cursor overlay window
     static let cursorSize = CGSize(width: 14, height: 24)
-    
+
+    /// Default cursor scale (0.5 = 50% of natural size)
+    /// This can be overridden by user preference in settings
+    static let defaultCursorScale: CGFloat = 0.5
+
     /// Opacity of active subscribed cursors (0.0 to 1.0)
     /// 1.0 = fully opaque, 0.0 = invisible
     static let activeCursorOpacity: Double = 1.0

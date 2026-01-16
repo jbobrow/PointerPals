@@ -7,6 +7,7 @@ class CursorManager {
     private var cancellables = Set<AnyCancellable>()
     private var inactivityTimers: [String: Timer] = [:]
     private var shouldShowUsernames: Bool = false
+    private var cursorScale: CGFloat = PointerPalsConfig.defaultCursorScale
     private var usernames: [String: String] = [:] // userId -> username mapping
     private var subscriptionStates: [String: Bool] = [:] // userId -> isEnabled
 
@@ -34,8 +35,9 @@ class CursorManager {
         return subscriptionStates[userId] ?? false
     }
     
-    init(networkManager: NetworkManager) {
+    init(networkManager: NetworkManager, cursorScale: CGFloat = PointerPalsConfig.defaultCursorScale) {
         self.networkManager = networkManager
+        self.cursorScale = cursorScale
         setupSubscriptions()
         loadSubscriptions()
     }
@@ -158,7 +160,7 @@ class CursorManager {
             return
         }
 
-        let window = CursorWindow(userId: userId)
+        let window = CursorWindow(userId: userId, cursorScale: cursorScale)
         cursorWindows[userId] = window
         networkManager.subscribeTo(userId: userId)
     }
@@ -183,6 +185,18 @@ class CursorManager {
         // Update all existing cursor windows
         for window in cursorWindows.values {
             window.setUsernameVisibility(visible)
+        }
+    }
+
+    func setCursorScale(_ scale: CGFloat) {
+        cursorScale = scale
+
+        // Recreate all active cursor windows with new scale
+        let activeUserIds = Array(cursorWindows.keys)
+        for userId in activeUserIds {
+            // Disable and re-enable to recreate window with new scale
+            disableSubscription(userId: userId)
+            enableSubscription(userId: userId)
         }
     }
     
