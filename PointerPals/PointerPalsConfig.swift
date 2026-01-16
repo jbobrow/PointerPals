@@ -69,13 +69,13 @@ struct PointerPalsConfig {
     // MARK: - User Interface
 
     /// Menu bar icon when publishing (regardless of subscriptions)
-    static let publishingIcon = "cursorarrow.rays"
+    static let publishingIcon = "pointer.arrow.motionlines"
 
     /// Menu bar icon when not publishing but has active subscriptions
-    static let activeSubscriptionsIcon = "cursorarrow.click.2"
+    static let activeSubscriptionsIcon = "pointer.arrow"
 
     /// Menu bar icon when idle (not publishing and no active subscriptions)
-    static let idleIcon = "cursorarrow"
+    static let idleIcon = "pointer.arrow"
 
     /// Show subscription count in menu bar
     static let showSubscriptionCount = true
