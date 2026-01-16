@@ -27,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var demoCursorWindow: CursorWindow?
     private var demoTimer: Timer?
+    private weak var demoButton: NSButton?  // Weak reference to demo button for updates
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -406,6 +407,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         demoCursorButton.target = self
         demoCursorButton.action = #selector(toggleDemoCursorFromSettings(_:))
 
+        // Store weak reference for updates when animation completes
+        self.demoButton = demoCursorButton
+
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
         containerView.addSubview(saveUsernameButton)
@@ -549,7 +553,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     // Cleanup after fade out completes
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                         self?.cleanupDemoCursor()
-                        // Update button title if Settings window is still open
                         self?.updateDemoButtonTitle()
                     }
                 }
@@ -598,20 +601,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateDemoButtonTitle() {
-        // Find any open settings window and update the demo button
-        for window in NSApp.windows {
-            if window.contentView?.subviews.first?.subviews.contains(where: { view in
-                (view as? NSButton)?.action == #selector(toggleDemoCursorFromSettings(_:))
-            }) == true {
-                // Found the settings window, find and update the button
-                if let containerView = window.contentView?.subviews.first,
-                   let demoButton = containerView.subviews.first(where: {
-                       ($0 as? NSButton)?.action == #selector(toggleDemoCursorFromSettings(_:))
-                   }) as? NSButton {
-                    demoButton.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
-                }
-            }
-        }
+        // Update the button title using stored weak reference
+        demoButton?.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
     }
 
     @objc private func quit() {
