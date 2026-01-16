@@ -384,37 +384,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func cleanupDemoCursor() {
         guard let window = demoCursorWindow else { return }
 
-        // Clear reference immediately
+        // Clear reference so menu updates
         demoCursorWindow = nil
 
-        // CRITICAL: Disable all animation behavior on the window
-        window.animationBehavior = .none
-
-        // Stop all in-flight animations immediately
-        NSAnimationContext.beginGrouping()
-        NSAnimationContext.current.duration = 0
-        NSAnimationContext.current.completionHandler = nil
-        window.animations = [:]
-        window.alphaValue = 0.0
-        NSAnimationContext.endGrouping()
-
-        // Flush all pending Core Animation transactions
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        window.contentView?.layer?.removeAllAnimations()
-        window.contentView?.subviews.forEach { subview in
-            subview.layer?.removeAllAnimations()
-            subview.animations = [:]
-        }
-        CATransaction.commit()
-
-        // Hide window
+        // Simply hide the window and let animations finish naturally
+        // Don't close the window - let it be deallocated when animations complete
         window.orderOut(nil)
 
-        // Close window and update menu immediately
-        // No delay needed since all animations are fully stopped
-        window.close()
+        // Update menu to show "Show Demo Cursor" again
         updateMenu()
+
+        // Close the window after a long delay to allow all animations to complete
+        // The delay is intentionally generous to ensure all run loop events process
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            window.close()
+        }
     }
 
     private func stopDemoCursor() {
@@ -425,30 +409,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let window = demoCursorWindow {
             demoCursorWindow = nil
 
-            // Disable all animation behavior
-            window.animationBehavior = .none
-
-            // Stop all in-flight animations immediately
-            NSAnimationContext.beginGrouping()
-            NSAnimationContext.current.duration = 0
-            NSAnimationContext.current.completionHandler = nil
-            window.animations = [:]
-            window.alphaValue = 0.0
-            NSAnimationContext.endGrouping()
-
-            // Flush all pending Core Animation transactions
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            window.contentView?.layer?.removeAllAnimations()
-            window.contentView?.subviews.forEach { subview in
-                subview.layer?.removeAllAnimations()
-                subview.animations = [:]
-            }
-            CATransaction.commit()
-
-            // Hide and close immediately
+            // Hide window immediately
             window.orderOut(nil)
-            window.close()
+
+            // Close after delay to let animations complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                window.close()
+            }
         }
 
         updateMenu()
