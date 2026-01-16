@@ -29,11 +29,11 @@ struct PointerPalsConfig {
     // MARK: - Cursor Display
     
     /// Size of the cursor overlay window
-    static let cursorSize = CGSize(width: 20, height: 28)
+    static let cursorSize = CGSize(width: 14, height: 24)
     
     /// Opacity of active subscribed cursors (0.0 to 1.0)
     /// 1.0 = fully opaque, 0.0 = invisible
-    static let activeCursorOpacity: Double = 0.7
+    static let activeCursorOpacity: Double = 1.0
     
     /// Duration of fade-in animation (seconds)
     static let fadeInDuration: Double = 0.3

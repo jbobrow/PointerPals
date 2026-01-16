@@ -22,14 +22,25 @@ class CursorWindow: NSWindow {
         // Create username label
         usernameLabel = NSTextField(labelWithString: "")
         usernameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        usernameLabel.textColor = .white
-        usernameLabel.backgroundColor = NSColor.black.withAlphaComponent(0.7)
+        usernameLabel.backgroundColor = NSColor.black
         usernameLabel.isBordered = false
         usernameLabel.isEditable = false
         usernameLabel.alignment = .center
         usernameLabel.wantsLayer = true
         usernameLabel.layer?.cornerRadius = 4
         usernameLabel.layer?.masksToBounds = true
+
+        // Add stroke to text
+        // TODO: Fix this, it doesn't seem to work
+        let attributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: NSColor.black,
+            .strokeColor: NSColor.white,
+            .strokeWidth: -3.0  // Negative value for outlined text
+        ]
+        usernameLabel.attributedStringValue = NSAttributedString(
+            string: currentUsername ?? "username",  // Replace with actual username
+            attributes: attributes
+        )
 
         // Calculate window size to accommodate cursor and label
         let windowWidth = max(PointerPalsConfig.cursorSize.width, 100)
@@ -148,22 +159,22 @@ class CursorWindow: NSWindow {
         
         // Draw a simple arrow cursor shape
         let path = NSBezierPath()
-        path.move(to: CGPoint(x: 0, y: size.height))
-        path.line(to: CGPoint(x: 0, y: 0))
-        path.line(to: CGPoint(x: size.width * 0.4, y: size.height * 0.6))
-        path.line(to: CGPoint(x: size.width * 0.6, y: size.height * 0.5))
-        path.line(to: CGPoint(x: size.width, y: size.height))
-        path.line(to: CGPoint(x: size.width * 0.55, y: size.height * 0.65))
-        path.line(to: CGPoint(x: size.width * 0.35, y: size.height * 0.75))
+        path.move(to: CGPoint(x: size.width * 0.0, y: size.height * 1.0))
+        path.line(to: CGPoint(x: size.width * 0.0, y: size.height * 0.2))
+        path.line(to: CGPoint(x: size.width * 0.3, y: size.height * 0.35))
+        path.line(to: CGPoint(x: size.width * 0.55, y: size.height * 0.0))
+        path.line(to: CGPoint(x: size.width * 0.78, y: size.height * 0.05))
+        path.line(to: CGPoint(x: size.width * 0.55, y: size.height * 0.4))
+        path.line(to: CGPoint(x: size.width * 0.9, y: size.height * 0.45))
         path.close()
         
         // Fill with white
-        NSColor.white.setFill()
+        NSColor.black.setFill()
         path.fill()
         
         // Stroke with black
-        NSColor.black.setStroke()
-        path.lineWidth = 1.0
+        NSColor.white.setStroke()
+        path.lineWidth = 1
         path.stroke()
         
         image.unlockFocus()
