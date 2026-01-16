@@ -98,8 +98,8 @@ class CursorWindow: NSWindow {
             // Create attributed string with outline
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 11, weight: .medium),
-                .foregroundColor: NSColor.white,
-                .strokeColor: NSColor.black,
+                .foregroundColor: NSColor.black,
+                .strokeColor: NSColor.white,
                 .strokeWidth: -3.0  // Negative for fill + stroke, positive for stroke only
             ]
 
@@ -117,8 +117,8 @@ class CursorWindow: NSWindow {
                 // Create attributed string with outline
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: NSFont.systemFont(ofSize: 11, weight: .medium),
-                    .foregroundColor: NSColor.white,
-                    .strokeColor: NSColor.black,
+                    .foregroundColor: NSColor.black,
+                    .strokeColor: NSColor.white,
                     .strokeWidth: -3.0  // Negative for fill + stroke
                 ]
 
@@ -238,8 +238,8 @@ struct CursorWindowPreview: NSViewRepresentable {
         // Create attributed string with outline
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 11, weight: .medium),
-            .foregroundColor: NSColor.white,
-            .strokeColor: NSColor.black,
+            .foregroundColor: NSColor.black,
+            .strokeColor: NSColor.white,
             .strokeWidth: -3.0  // Negative for fill + stroke
         ]
         usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
