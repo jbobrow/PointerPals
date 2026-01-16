@@ -10,11 +10,20 @@ class CursorWindow: NSWindow {
     init(userId: String) {
         self.userId = userId
 
-        // Create cursor image view
-        cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: PointerPalsConfig.cursorSize))
+        // Get the system arrow cursor image and use its natural size
+        let cursorImage = NSCursor.arrow.image
+        let naturalCursorSize = cursorImage.size
 
-        // Use the system arrow cursor image
-        cursorImageView.image = NSCursor.arrow.image
+        // Scale cursor to desired size (0.5 = half size, 0.75 = 75% size, etc.)
+        let cursorScale: CGFloat = 0.5
+        let scaledCursorSize = CGSize(
+            width: naturalCursorSize.width * cursorScale,
+            height: naturalCursorSize.height * cursorScale
+        )
+
+        // Create cursor image view
+        cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: scaledCursorSize))
+        cursorImageView.image = cursorImage
 
         // Create username label
         usernameLabel = NSTextField(labelWithString: "")
@@ -27,21 +36,10 @@ class CursorWindow: NSWindow {
         usernameLabel.layer?.cornerRadius = 4
         usernameLabel.layer?.masksToBounds = true
 
-        // Add stroke to text
-        // TODO: Fix this, it doesn't seem to work
-        let attributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: NSColor.black,
-            .strokeColor: NSColor.white,
-            .strokeWidth: -3.0  // Negative value for outlined text
-        ]
-        usernameLabel.attributedStringValue = NSAttributedString(
-            string: currentUsername ?? "username",  // Replace with actual username
-            attributes: attributes
-        )
-
         // Calculate window size to accommodate cursor and label
-        let windowWidth = max(PointerPalsConfig.cursorSize.width, 100)
-        let windowHeight = PointerPalsConfig.cursorSize.height + 20
+        let labelHeight: CGFloat = 18
+        let windowWidth = max(scaledCursorSize.width, 100)
+        let windowHeight = scaledCursorSize.height + labelHeight
         let windowSize = CGSize(width: windowWidth, height: windowHeight)
 
         // Initialize window with calculated size
@@ -51,7 +49,7 @@ class CursorWindow: NSWindow {
             backing: .buffered,
             defer: false
         )
-        
+
         // Configure window properties
         self.backgroundColor = .clear
         self.isOpaque = false
@@ -65,11 +63,11 @@ class CursorWindow: NSWindow {
             self.collectionBehavior = [.stationary, .ignoresCycle]
         }
 
-        // Position cursor at top of window
-        cursorImageView.frame.origin = CGPoint(x: 0, y: 20)
+        // Position cursor above the username label
+        cursorImageView.frame.origin = CGPoint(x: 0, y: labelHeight)
 
-        // Position username label below cursor
-        usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: 18)
+        // Position username label at the bottom
+        usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: labelHeight)
 
         // Add subviews to window
         if let contentView = self.contentView {
@@ -136,10 +134,11 @@ class CursorWindow: NSWindow {
         let screenX = x * screenFrame.width
         let screenY = y * screenFrame.height
 
-        // Offset the window position to account for cursor being at y: 20 within the window
+        // Offset the window position to account for cursor's position within the window
+        // The cursor is positioned at labelHeight (18) from the bottom of the window
         // This allows the cursor to reach all the way to the bottom of the screen
-        let cursorOffsetY: CGFloat = 20
-        let targetOrigin = CGPoint(x: screenX, y: screenY - cursorOffsetY)
+        let labelHeight: CGFloat = 18
+        let targetOrigin = CGPoint(x: screenX, y: screenY - labelHeight)
 
         // Set position immediately first
         self.setFrameOrigin(targetOrigin)
@@ -206,18 +205,24 @@ class CursorWindow: NSWindow {
 struct CursorWindowPreview: NSViewRepresentable {
     let showUsername: Bool
     let username: String
-    let cursorSize: CGSize
 
     func makeNSView(context: Context) -> NSView {
         let containerView = NSView()
         containerView.wantsLayer = true
         containerView.layer?.backgroundColor = NSColor.systemGray.withAlphaComponent(0.3).cgColor
 
-        // Create cursor image view
-        let cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: cursorSize))
+        // Get the system arrow cursor image and scale it
+        let cursorImage = NSCursor.arrow.image
+        let naturalCursorSize = cursorImage.size
+        let cursorScale: CGFloat = 0.5
+        let scaledCursorSize = CGSize(
+            width: naturalCursorSize.width * cursorScale,
+            height: naturalCursorSize.height * cursorScale
+        )
 
-        // Use the system arrow cursor image
-        cursorImageView.image = NSCursor.arrow.image
+        // Create cursor image view
+        let cursorImageView = NSImageView(frame: NSRect(origin: .zero, size: scaledCursorSize))
+        cursorImageView.image = cursorImage
 
         // Create username label
         let usernameLabel = NSTextField(labelWithString: "")
@@ -238,13 +243,14 @@ struct CursorWindowPreview: NSViewRepresentable {
         ]
         usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
 
-        let windowWidth = max(cursorSize.width, 100)
+        let labelHeight: CGFloat = 18
+        let windowWidth = max(scaledCursorSize.width, 100)
 
-        // Position cursor at top
-        cursorImageView.frame.origin = CGPoint(x: (windowWidth - cursorSize.width) / 2, y: 20)
+        // Position cursor above the username label
+        cursorImageView.frame.origin = CGPoint(x: 0, y: labelHeight)
 
-        // Position username label below cursor
-        usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: 18)
+        // Position username label at the bottom
+        usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: labelHeight)
         usernameLabel.isHidden = !showUsername
 
         // Add subviews
@@ -263,8 +269,7 @@ struct CursorWindowPreview: NSViewRepresentable {
 #Preview("Cursor with Username") {
     CursorWindowPreview(
         showUsername: true,
-        username: "Alice",
-        cursorSize: PointerPalsConfig.cursorSize
+        username: "Alice"
     )
     .frame(width: 120, height: 60)
 }
@@ -272,26 +277,23 @@ struct CursorWindowPreview: NSViewRepresentable {
 #Preview("Cursor without Username") {
     CursorWindowPreview(
         showUsername: false,
-        username: "Alice",
-        cursorSize: PointerPalsConfig.cursorSize
+        username: "Alice"
     )
     .frame(width: 120, height: 60)
 }
 
-#Preview("Large Cursor with Long Username") {
+#Preview("Long Username") {
     CursorWindowPreview(
         showUsername: true,
-        username: "SuperLongUsername",
-        cursorSize: CGSize(width: 24, height: 32)
+        username: "SuperLongUsername"
     )
     .frame(width: 150, height: 70)
 }
 
-#Preview("Small Cursor") {
+#Preview("Short Name") {
     CursorWindowPreview(
         showUsername: true,
-        username: "Bob",
-        cursorSize: CGSize(width: 16, height: 22)
+        username: "Bob"
     )
     .frame(width: 100, height: 50)
 }
@@ -301,15 +303,13 @@ struct CursorWindowPreview: NSViewRepresentable {
         HStack(spacing: 20) {
             CursorWindowPreview(
                 showUsername: true,
-                username: "Alice",
-                cursorSize: PointerPalsConfig.cursorSize
+                username: "Alice"
             )
             .frame(width: 120, height: 60)
 
             CursorWindowPreview(
                 showUsername: true,
-                username: "Bob",
-                cursorSize: PointerPalsConfig.cursorSize
+                username: "Bob"
             )
             .frame(width: 120, height: 60)
         }
@@ -317,15 +317,13 @@ struct CursorWindowPreview: NSViewRepresentable {
         HStack(spacing: 20) {
             CursorWindowPreview(
                 showUsername: false,
-                username: "Charlie",
-                cursorSize: PointerPalsConfig.cursorSize
+                username: "Charlie"
             )
             .frame(width: 120, height: 60)
 
             CursorWindowPreview(
                 showUsername: true,
-                username: "Dave with long name",
-                cursorSize: PointerPalsConfig.cursorSize
+                username: "Dave with long name"
             )
             .frame(width: 150, height: 60)
         }
