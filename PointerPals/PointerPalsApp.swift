@@ -394,7 +394,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func startDemoCursor() {
         // Create demo cursor window
         demoCursorWindow = CursorWindow(userId: "demo")
-        demoCursorWindow?.updateUsername("Hello from PointerPals!")
+        demoCursorWindow?.updateUsername("Hello")
 
         let duration: TimeInterval = 6.0 // Total animation duration in seconds
         let fps: Double = 60.0
