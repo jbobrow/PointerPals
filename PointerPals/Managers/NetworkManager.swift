@@ -6,9 +6,14 @@ class NetworkManager {
     var currentUsername: String {
         didSet {
             UserDefaults.standard.set(currentUsername, forKey: "PointerPals_Username")
+            // Notify server of username change
+            if isConnected {
+                updateUsernameOnServer()
+            }
         }
     }
     private let cursorUpdateSubject = PassthroughSubject<CursorData, Never>()
+    private let usernameUpdateSubject = PassthroughSubject<(userId: String, username: String), Never>()
     private var subscriptions: Set<String> = []
 
     // WebSocket configuration
@@ -16,9 +21,13 @@ class NetworkManager {
     private let serverURL: String
     private var isConnected = false
     private var reconnectTimer: Timer?
-    
+
     var cursorUpdatePublisher: AnyPublisher<CursorData, Never> {
         cursorUpdateSubject.eraseToAnyPublisher()
+    }
+
+    var usernameUpdatePublisher: AnyPublisher<(userId: String, username: String), Never> {
+        usernameUpdateSubject.eraseToAnyPublisher()
     }
     
     init(serverURL: String = PointerPalsConfig.serverURL) {
@@ -53,10 +62,14 @@ class NetworkManager {
             print("Invalid server URL: \(serverURL)")
             return
         }
-        
+
+        // DEBUG: Print the actual URL being used
+        print("🔌 Connecting to WebSocket server at: \(serverURL)")
+        print("🔌 URL object: \(url.absoluteString)")
+
         webSocketTask = URLSession.shared.webSocketTask(with: url)
         webSocketTask?.resume()
-        
+
         if PointerPalsConfig.debugLogging {
             print("Connecting to WebSocket server at \(serverURL)")
         }
@@ -79,6 +92,15 @@ class NetworkManager {
         ]
 
         sendMessage(registerMessage)
+    }
+
+    private func updateUsernameOnServer() {
+        let updateMessage: [String: Any] = [
+            "action": "update_username",
+            "username": currentUsername
+        ]
+
+        sendMessage(updateMessage)
     }
     
     private func receiveMessage() {
@@ -141,12 +163,28 @@ class NetworkManager {
             if let targetUserId = json["targetUserId"] as? String {
                 print("Successfully unsubscribed from \(targetUserId)")
             }
-            
+
+        case "username_update":
+            // Received when a subscribed user changes their username
+            if let userId = json["userId"] as? String,
+               let username = json["username"] as? String {
+                print("User \(userId) changed username to: \(username)")
+                DispatchQueue.main.async {
+                    self.usernameUpdateSubject.send((userId: userId, username: username))
+                }
+            }
+
+        case "username_updated":
+            // Confirmation that our username was updated
+            if let username = json["username"] as? String {
+                print("Username updated to: \(username)")
+            }
+
         case "error":
             if let message = json["message"] as? String {
                 print("Server error: \(message)")
             }
-            
+
         default:
             print("Unknown message type: \(type)")
         }

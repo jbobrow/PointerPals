@@ -6,11 +6,12 @@
 //
 
 import SwiftUI
+import Combine
 
 @main
 struct PointerPalsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     var body: some Scene {
         Settings {
             EmptyView()
@@ -23,6 +24,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
     private var networkManager: NetworkManager!
+    private var cancellables = Set<AnyCancellable>()
+    private var demoCursorWindow: CursorWindow?
+    private var demoTimer: Timer?
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -49,11 +53,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Apply username visibility setting
         cursorManager.setUsernameVisibility(showUsernames)
 
+        // Subscribe to subscription changes to update menu
+        cursorManager.subscriptionsDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateMenu()
+            }
+            .store(in: &cancellables)
+
         // Setup menu bar
         setupMenuBar()
-
-        // Request accessibility permissions if needed
-        requestAccessibilityPermissions()
     }
     
     private func setupMenuBar() {
@@ -102,7 +111,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(usernamesItem)
 
         menu.addItem(NSMenuItem.separator())
-        
+
+        // Demo cursor
+        let demoItem = NSMenuItem(
+            title: demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor",
+            action: #selector(toggleDemoCursor),
+            keyEquivalent: "d"
+        )
+        demoItem.target = self
+        menu.addItem(demoItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         // Subscriptions section
         let subsHeader = NSMenuItem(title: "Subscriptions", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
@@ -114,13 +134,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(noSubs)
         } else {
             for userId in cursorManager.activeSubscriptions {
-                let subItem = NSMenuItem(
-                    title: "  👤 \(userId)",
-                    action: #selector(unsubscribe(_:)),
-                    keyEquivalent: ""
-                )
+                let subItem = NSMenuItem()
+                subItem.action = #selector(unsubscribe(_:))
+                subItem.keyEquivalent = ""
                 subItem.target = self
                 subItem.representedObject = userId
+
+                // Create attributed string with username and grey userId
+                let username = cursorManager.getUsername(for: userId) ?? "User"
+                let displayText = "  👤 \(username) (\(userId))"
+
+                let attributedTitle = NSMutableAttributedString(string: displayText)
+
+                // Find the range of the userId (text within parentheses)
+                if let openParen = displayText.firstIndex(of: "("),
+                   let closeParen = displayText.firstIndex(of: ")") {
+                    let userIdRange = NSRange(openParen..<displayText.index(after: closeParen), in: displayText)
+
+                    // Style the userId in grey
+                    attributedTitle.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: userIdRange)
+                }
+
+                subItem.attributedTitle = attributedTitle
                 menu.addItem(subItem)
             }
         }
@@ -269,14 +304,129 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    @objc private func toggleDemoCursor() {
+        if demoCursorWindow != nil {
+            stopDemoCursor()
+        } else {
+            startDemoCursor()
+        }
+        updateMenu()
+    }
+
+    private func startDemoCursor() {
+        // Create demo cursor window
+        demoCursorWindow = CursorWindow(userId: "demo")
+        demoCursorWindow?.updateUsername("Hello from PointerPals!")
+
+        let duration: TimeInterval = 6.0 // Total animation duration in seconds
+        let fps: Double = 60.0
+        let totalFrames = Int(duration * fps)
+        var currentFrame = 0
+
+        // Set initial position
+        demoCursorWindow?.updatePosition(x: 0.5, y: 0.3)
+
+        // Start animation after brief delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+
+            self.demoCursorWindow?.fadeIn()
+
+            self.demoTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
+                guard let self = self, self.demoCursorWindow != nil else {
+                    timer.invalidate()
+                    return
+                }
+
+                currentFrame += 1
+                let progress = Double(currentFrame) / Double(totalFrames)
+
+                // Ease-in-out function: smoothstep
+                let eased = progress * progress * (3.0 - 2.0 * progress)
+
+                // Calculate angle (0 = 12 o'clock, goes clockwise)
+                let startAngle = -Double.pi / 2
+                let angle = startAngle + (eased * 2.0 * Double.pi)
+
+                // Circle parameters (centered on screen)
+                let radius = 0.2
+                let centerX = 0.5
+                let centerY = 0.5
+
+                // Calculate position on circle
+                let x = centerX + (radius * cos(angle))
+                let y = centerY + (radius * sin(angle))
+
+                // Update cursor position
+                self.demoCursorWindow?.updatePosition(x: x, y: y)
+
+                // Fade out in the last 10% of animation
+                if progress > 0.9 && currentFrame % 3 == 0 {
+                    let fadeProgress = (progress - 0.9) / 0.1
+                    if fadeProgress > 0.5 {
+                        self.demoCursorWindow?.fadeOut()
+                    }
+                }
+
+                // Stop when complete
+                if currentFrame >= totalFrames {
+                    timer.invalidate()
+                    self.demoTimer = nil
+
+                    // Cleanup after fade out completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                        self?.cleanupDemoCursor()
+                    }
+                }
+            }
+        }
+    }
+
+    private func cleanupDemoCursor() {
+        guard let window = demoCursorWindow else { return }
+
+        // Clear reference immediately
+        demoCursorWindow = nil
+
+        // Stop ALL animations to prevent use-after-free
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0
+            window.animator().alphaValue = 0
+        }, completionHandler: nil)
+
+        // Hide window immediately
+        window.alphaValue = 0.0
+        window.orderOut(nil)
+
+        // Close and update menu after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            window.close()
+            self?.updateMenu()
+        }
+    }
+
+    private func stopDemoCursor() {
+        // User manually stopped, clean up immediately
+        demoTimer?.invalidate()
+        demoTimer = nil
+
+        if let window = demoCursorWindow {
+            demoCursorWindow = nil
+
+            // Stop animations
+            window.alphaValue = 0.0
+            window.orderOut(nil)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                window.close()
+            }
+        }
+
+        updateMenu()
+    }
+
     @objc private func quit() {
+        stopDemoCursor()
         NSApplication.shared.terminate(nil)
     }
-    
-    private func requestAccessibilityPermissions() {
-        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        let accessibilityEnabled = AXIsProcessTrusted()  // ✅ Call without args
-        if !accessibilityEnabled {
-            AXIsProcessTrustedWithOptions(options as CFDictionary)  // ✅ Use the WITH options version
-        }    }
 }

@@ -7,9 +7,17 @@ class CursorManager {
     private var cancellables = Set<AnyCancellable>()
     private var inactivityTimers: [String: Timer] = [:]
     private var shouldShowUsernames: Bool = false
+    private var usernames: [String: String] = [:] // userId -> username mapping
+
+    // Notification when subscriptions or usernames change
+    let subscriptionsDidChange = PassthroughSubject<Void, Never>()
 
     var activeSubscriptions: [String] {
         Array(cursorWindows.keys)
+    }
+
+    func getUsername(for userId: String) -> String? {
+        return usernames[userId]
     }
     
     init(networkManager: NetworkManager) {
@@ -24,6 +32,13 @@ class CursorManager {
                 self?.handleCursorUpdate(cursorData)
             }
             .store(in: &cancellables)
+
+        networkManager.usernameUpdatePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (userId, username) in
+                self?.handleUsernameUpdate(userId: userId, username: username)
+            }
+            .store(in: &cancellables)
     }
     
     func subscribe(to userId: String) {
@@ -31,18 +46,21 @@ class CursorManager {
             print("Already subscribed to \(userId)")
             return
         }
-        
+
         // Check max subscriptions limit
         if PointerPalsConfig.maxSubscriptions > 0 &&
            cursorWindows.count >= PointerPalsConfig.maxSubscriptions {
             print("Maximum subscription limit reached (\(PointerPalsConfig.maxSubscriptions))")
             return
         }
-        
+
         let window = CursorWindow(userId: userId)
         cursorWindows[userId] = window
         networkManager.subscribeTo(userId: userId)
-        
+
+        // Notify that subscriptions changed
+        subscriptionsDidChange.send()
+
         if PointerPalsConfig.debugLogging {
             print("Subscribed to \(userId)")
         }
@@ -57,7 +75,13 @@ class CursorManager {
         inactivityTimers[userId]?.invalidate()
         inactivityTimers.removeValue(forKey: userId)
 
+        // Clean up stored username
+        usernames.removeValue(forKey: userId)
+
         networkManager.unsubscribeFrom(userId: userId)
+
+        // Notify that subscriptions changed
+        subscriptionsDidChange.send()
 
         print("Unsubscribed from \(userId)")
     }
@@ -74,6 +98,21 @@ class CursorManager {
     private func handleCursorUpdate(_ cursorData: CursorData) {
         guard let window = cursorWindows[cursorData.userId] else {
             return
+        }
+
+        // Update stored username if it has changed
+        let usernameChanged: Bool
+        if let newUsername = cursorData.username {
+            let oldUsername = usernames[cursorData.userId]
+            usernameChanged = oldUsername != newUsername
+            usernames[cursorData.userId] = newUsername
+        } else {
+            usernameChanged = false
+        }
+
+        // Notify subscribers if username changed
+        if usernameChanged {
+            subscriptionsDidChange.send()
         }
 
         // Cancel existing inactivity timer
@@ -101,6 +140,19 @@ class CursorManager {
         }
 
         inactivityTimers[cursorData.userId] = timer
+    }
+
+    private func handleUsernameUpdate(userId: String, username: String) {
+        // Update stored username
+        usernames[userId] = username
+
+        // Update the cursor window if usernames are visible
+        if shouldShowUsernames, let window = cursorWindows[userId] {
+            window.updateUsername(username)
+        }
+
+        // Notify that subscriptions changed (to update menu)
+        subscriptionsDidChange.send()
     }
     
     deinit {

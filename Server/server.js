@@ -109,6 +109,46 @@ wss.on('connection', (ws, req) => {
           }
           break;
 
+        case 'update_username':
+          // Update username and notify subscribers
+          if (!currentUserId) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Must register before updating username'
+            }));
+            return;
+          }
+
+          const newUsername = data.username || 'User';
+          const clientData = clients.get(currentUserId);
+
+          if (clientData) {
+            const oldUsername = clientData.username;
+            clientData.username = newUsername;
+            clients.set(currentUserId, clientData);
+            console.log(`User ${currentUserId} changed username from "${oldUsername}" to "${newUsername}"`);
+
+            // Notify all subscribers about the username change
+            for (const [userId, subscribedToSet] of subscriptions.entries()) {
+              if (subscribedToSet.has(currentUserId)) {
+                const client = clients.get(userId);
+                if (client && client.ws && client.ws.readyState === WebSocket.OPEN) {
+                  client.ws.send(JSON.stringify({
+                    type: 'username_update',
+                    userId: currentUserId,
+                    username: newUsername
+                  }));
+                }
+              }
+            }
+
+            ws.send(JSON.stringify({
+              type: 'username_updated',
+              username: newUsername
+            }));
+          }
+          break;
+
         default:
           console.log('Unknown action:', data.action);
       }
