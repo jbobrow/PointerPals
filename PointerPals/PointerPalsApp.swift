@@ -124,7 +124,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         // Subscriptions section
-        let subsHeader = NSMenuItem(title: "Subscriptions (click to toggle, right-click to delete)", action: nil, keyEquivalent: "")
+        let subsHeader = NSMenuItem(title: "Subscriptions (click to toggle, right-click for options)", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
         menu.addItem(subsHeader)
 
@@ -165,12 +165,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 subItem.attributedTitle = attributedTitle
 
-                // Add context menu for delete option
+                // Add context menu with toggle and delete options
                 let contextMenu = NSMenu()
-                let deleteItem = NSMenuItem(title: "Delete Subscription", action: #selector(deleteSubscription(_:)), keyEquivalent: "")
+
+                // Toggle option (Enable/Disable based on current state)
+                let toggleTitle = isEnabled ? "Disable" : "Enable"
+                let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleSubscription(_:)), keyEquivalent: "")
+                toggleItem.target = self
+                toggleItem.representedObject = userId
+                contextMenu.addItem(toggleItem)
+
+                // Delete option
+                let deleteItem = NSMenuItem(title: "Delete", action: #selector(deleteSubscription(_:)), keyEquivalent: "")
                 deleteItem.target = self
                 deleteItem.representedObject = userId
                 contextMenu.addItem(deleteItem)
+
                 subItem.submenu = contextMenu
 
                 menu.addItem(subItem)
