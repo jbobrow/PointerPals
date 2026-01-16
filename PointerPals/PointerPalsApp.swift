@@ -6,11 +6,12 @@
 //
 
 import SwiftUI
+import Combine
 
 @main
 struct PointerPalsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     var body: some Scene {
         Settings {
             EmptyView()
@@ -23,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
     private var networkManager: NetworkManager!
+    private var cancellables = Set<AnyCancellable>()
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -48,6 +50,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Apply username visibility setting
         cursorManager.setUsernameVisibility(showUsernames)
+
+        // Subscribe to subscription changes to update menu
+        cursorManager.subscriptionsDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateMenu()
+            }
+            .store(in: &cancellables)
 
         // Setup menu bar
         setupMenuBar()
@@ -111,13 +121,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(noSubs)
         } else {
             for userId in cursorManager.activeSubscriptions {
-                let subItem = NSMenuItem(
-                    title: "  👤 \(userId)",
-                    action: #selector(unsubscribe(_:)),
-                    keyEquivalent: ""
-                )
+                let subItem = NSMenuItem()
+                subItem.action = #selector(unsubscribe(_:))
+                subItem.keyEquivalent = ""
                 subItem.target = self
                 subItem.representedObject = userId
+
+                // Create attributed string with username and grey userId
+                let username = cursorManager.getUsername(for: userId) ?? "User"
+                let displayText = "  👤 \(username) (\(userId))"
+
+                let attributedTitle = NSMutableAttributedString(string: displayText)
+
+                // Find the range of the userId (text within parentheses)
+                if let openParen = displayText.firstIndex(of: "("),
+                   let closeParen = displayText.firstIndex(of: ")") {
+                    let userIdRange = NSRange(openParen..<displayText.index(after: closeParen), in: displayText)
+
+                    // Style the userId in grey
+                    attributedTitle.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: userIdRange)
+                }
+
+                subItem.attributedTitle = attributedTitle
                 menu.addItem(subItem)
             }
         }
