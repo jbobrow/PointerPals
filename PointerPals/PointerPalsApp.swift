@@ -202,8 +202,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             cursorPublisher.startPublishing()
         }
-        updateStatusItemTitle()
-        updateMenu()
+
+        // Defer menu update to avoid crash when updating menu while it's active
+        DispatchQueue.main.async { [weak self] in
+            self?.updateStatusItemTitle()
+            self?.updateMenu()
+        }
     }
 
     @objc private func toggleUsernames() {
@@ -213,8 +217,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func unsubscribe(_ sender: NSMenuItem) {
         if let userId = sender.representedObject as? String {
             cursorManager.unsubscribe(from: userId)
-            updateStatusItemTitle()
-            updateMenu()
+
+            // Defer menu update to avoid crash when updating menu while it's active
+            DispatchQueue.main.async { [weak self] in
+                self?.updateStatusItemTitle()
+                self?.updateMenu()
+            }
         }
     }
     
@@ -236,8 +244,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let userId = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if !userId.isEmpty {
                 cursorManager.subscribe(to: userId)
-                updateStatusItemTitle()
-                updateMenu()
+
+                // Defer menu update for consistency
+                DispatchQueue.main.async { [weak self] in
+                    self?.updateStatusItemTitle()
+                    self?.updateMenu()
+                }
             }
         }
     }
@@ -310,7 +322,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             startDemoCursor()
         }
-        updateMenu()
+
+        // Defer menu update to avoid crash when updating menu while it's active
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenu()
+        }
     }
 
     private func startDemoCursor() {
@@ -414,7 +430,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.orderOut(nil)
         }
 
-        updateMenu()
+        // Note: updateMenu() is called by toggleDemoCursor() which calls this method
     }
 
     @objc private func quit() {
