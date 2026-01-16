@@ -385,14 +385,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func cleanupDemoCursor() {
         guard let window = demoCursorWindow else { return }
 
-        // Clear reference first
+        // Clear reference immediately
         demoCursorWindow = nil
 
-        // Close window
-        window.close()
+        // Stop ALL animations to prevent use-after-free
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0
+            window.animator().alphaValue = 0
+        }, completionHandler: nil)
 
-        // Update menu after everything is cleaned up
-        DispatchQueue.main.async { [weak self] in
+        // Hide window immediately
+        window.alphaValue = 0.0
+        window.orderOut(nil)
+
+        // Close and update menu after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            window.close()
             self?.updateMenu()
         }
     }
@@ -404,7 +412,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let window = demoCursorWindow {
             demoCursorWindow = nil
-            window.close()
+
+            // Stop animations
+            window.alphaValue = 0.0
+            window.orderOut(nil)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                window.close()
+            }
         }
 
         updateMenu()
