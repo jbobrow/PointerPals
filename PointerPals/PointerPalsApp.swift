@@ -309,14 +309,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func showSettings() {
         let alert = NSAlert()
-        alert.messageText = "Settings"
-        alert.informativeText = "Configure PointerPals preferences."
+        alert.messageText = "Pointer Pals"
+        alert.informativeText = ""
         alert.addButton(withTitle: "Done")
 
         // Create a container view
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 210))
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 240))
 
-        var yPos: CGFloat = 190
+        var yPos: CGFloat = 220
 
         // Username section with inline save
         let usernameLabel = NSTextField(labelWithString: "Username:")
@@ -348,7 +348,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         yPos -= 26
         let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        userIdField.frame = NSRect(x: 0, y: yPos, width: 250, height: 24)
+        userIdField.frame = NSRect(x: 0, y: yPos, width: 340, height: 24)
         userIdField.isBezeled = false
         userIdField.drawsBackground = false
         userIdField.isEditable = false
@@ -356,14 +356,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         userIdField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         userIdField.textColor = .secondaryLabelColor
 
-        let copyIdButton = NSButton(frame: NSRect(x: 260, y: yPos, width: 80, height: 24))
-        copyIdButton.title = "Copy"
+        yPos -= 32
+        let copyIdButton = NSButton(frame: NSRect(x: 0, y: yPos, width: 340, height: 32))
+        copyIdButton.title = "Copy User ID to Share with Friends"
         copyIdButton.bezelStyle = .rounded
+        copyIdButton.bezelColor = .controlAccentColor
+        copyIdButton.contentTintColor = .controlAccentColor
         copyIdButton.target = self
         copyIdButton.action = #selector(copyUserIdFromSettings)
 
-        // Show Usernames checkbox
-        yPos -= 32
+        // Visual separator and Display Preferences header
+        yPos -= 24
+        let separator = NSBox(frame: NSRect(x: 0, y: yPos, width: 340, height: 1))
+        separator.boxType = .separator
+
+        yPos -= 26
+        let preferencesHeader = NSTextField(labelWithString: "Display Preferences")
+        preferencesHeader.frame = NSRect(x: 0, y: yPos, width: 200, height: 17)
+        preferencesHeader.isBezeled = false
+        preferencesHeader.drawsBackground = false
+        preferencesHeader.isEditable = false
+        preferencesHeader.isSelectable = false
+        preferencesHeader.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+
+        // Show Usernames switch
+        yPos -= 28
         let usernamesCheckbox = NSButton(frame: NSRect(x: 0, y: yPos, width: 200, height: 18))
         usernamesCheckbox.setButtonType(.switch)
         usernamesCheckbox.title = "Show Usernames"
@@ -399,10 +416,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sizeValueLabel.alignment = .right
         sizeValueLabel.tag = 999
 
-        // Show Demo Cursor button
-        yPos -= 36
-        let demoCursorButton = NSButton(frame: NSRect(x: 0, y: yPos, width: 160, height: 28))
-        demoCursorButton.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
+        // Demo Cursor button (centered)
+        yPos -= 40
+        let demoCursorButton = NSButton(frame: NSRect(x: 90, y: yPos, width: 160, height: 28))
+        demoCursorButton.title = "Demo Cursor"
         demoCursorButton.bezelStyle = .rounded
         demoCursorButton.target = self
         demoCursorButton.action = #selector(toggleDemoCursorFromSettings(_:))
@@ -416,6 +433,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         containerView.addSubview(userIdLabel)
         containerView.addSubview(userIdField)
         containerView.addSubview(copyIdButton)
+        containerView.addSubview(separator)
+        containerView.addSubview(preferencesHeader)
         containerView.addSubview(usernamesCheckbox)
         containerView.addSubview(cursorSizeLabel)
         containerView.addSubview(cursorSizeSlider)
@@ -465,8 +484,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleDemoCursorFromSettings(_ sender: NSButton) {
         toggleDemoCursor()
-        // Update button title
-        sender.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
     }
     
     @objc private func toggleDemoCursor() {
@@ -601,8 +618,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateDemoButtonTitle() {
-        // Update the button title using stored weak reference
-        demoButton?.title = demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor"
+        // Button now has static "Demo Cursor" title - no update needed
     }
 
     @objc private func quit() {
