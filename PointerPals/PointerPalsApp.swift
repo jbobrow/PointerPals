@@ -380,20 +380,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func stopDemoCursor() {
-        // Capture window reference to prevent premature deallocation
-        let windowToClose = demoCursorWindow
-
-        // Clean up timer and reference immediately
+        // Stop timer first
         demoTimer?.invalidate()
         demoTimer = nil
+
+        // Capture window to close it after menu updates
+        let windowToClose = demoCursorWindow
         demoCursorWindow = nil
 
-        // Delay menu update and window close to avoid CA commit conflicts
-        DispatchQueue.main.async { [weak self] in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                windowToClose?.close()
-                self?.updateMenu()
-            }
+        // Update menu first (on main thread)
+        updateMenu()
+
+        // Close window after a brief delay to ensure menu is done updating
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            windowToClose?.close()
         }
     }
 

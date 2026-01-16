@@ -112,7 +112,10 @@ class CursorWindow: NSWindow {
 
         let targetOrigin = CGPoint(x: screenX, y: screenY)
 
-        // Animate to new position
+        // Set position immediately first
+        self.setFrameOrigin(targetOrigin)
+
+        // Then optionally animate for smoothness
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = PointerPalsConfig.cursorAnimationDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
