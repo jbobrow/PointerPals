@@ -27,17 +27,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var demoCursorWindow: CursorWindow?
     private var demoTimer: Timer?
+    private weak var demoButton: NSButton?  // Weak reference to demo button for updates
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
             cursorManager?.setUsernameVisibility(showUsernames)
-            updateMenu()
         }
     }
-    
+
+    private var cursorScale: CGFloat {
+        didSet {
+            UserDefaults.standard.set(cursorScale, forKey: "PointerPals_CursorScale")
+            cursorManager?.setCursorScale(cursorScale)
+        }
+    }
+
     override init() {
         // Load username visibility preference (default: false/hidden)
         self.showUsernames = UserDefaults.standard.object(forKey: "PointerPals_ShowUsernames") as? Bool ?? false
+
+        // Load cursor scale preference (default: 0.5)
+        self.cursorScale = UserDefaults.standard.object(forKey: "PointerPals_CursorScale") as? CGFloat ?? PointerPalsConfig.defaultCursorScale
+
         super.init()
     }
 
@@ -48,15 +59,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize managers
         networkManager = NetworkManager()
         cursorPublisher = CursorPublisher(networkManager: networkManager)
-        cursorManager = CursorManager(networkManager: networkManager)
+        cursorManager = CursorManager(networkManager: networkManager, cursorScale: cursorScale)
 
         // Apply username visibility setting
         cursorManager.setUsernameVisibility(showUsernames)
 
-        // Subscribe to subscription changes to update menu
+        // Subscribe to subscription changes to update menu and status
         cursorManager.subscriptionsDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
+                self?.updateStatusItemTitle()
                 self?.updateMenu()
             }
             .store(in: &cancellables)
@@ -67,25 +79,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        
+
         guard statusItem.button != nil else { return }
-        statusItem.button?.title = "..."
-        
+
+        // Set initial icon and title
+        updateStatusItemTitle()
         updateMenu()
     }
     
     private func updateStatusItemTitle() {
         guard let button = statusItem.button else { return }
-        
+
         let isPublishing = cursorPublisher.isPublishing
-        let subCount = cursorManager.activeSubscriptions.count
-        
-        let icon = isPublishing ? PointerPalsConfig.publishingIcon : PointerPalsConfig.notPublishingIcon
-        
-        if PointerPalsConfig.showSubscriptionCount {
-            button.title = "\(icon) \(subCount)"
+        let subCount = cursorManager.activeSubscriptionsCount
+
+        // Determine which icon to use based on state
+        let iconName: String
+        if isPublishing {
+            iconName = PointerPalsConfig.publishingIcon
+        } else if subCount > 0 {
+            iconName = PointerPalsConfig.activeSubscriptionsIcon
         } else {
-            button.title = icon
+            iconName = PointerPalsConfig.idleIcon
+        }
+
+        // Load SF Symbol icon
+        if let icon = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
+            button.image = icon
+            button.imagePosition = .imageLeading
+
+            if PointerPalsConfig.showSubscriptionCount {
+                button.title = " \(subCount)"
+            } else {
+                button.title = ""
+            }
+        } else {
+            // Fallback if SF Symbol not available
+            button.image = nil
+            button.title = isPublishing ? "📍" : (subCount > 0 ? "👀" : "💤")
+            if PointerPalsConfig.showSubscriptionCount {
+                button.title += " \(subCount)"
+            }
         }
     }
     
@@ -101,48 +135,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         publishItem.target = self
         menu.addItem(publishItem)
 
-        // Show/Hide usernames toggle
-        let usernamesItem = NSMenuItem(
-            title: showUsernames ? "Hide Usernames" : "Show Usernames",
-            action: #selector(toggleUsernames),
-            keyEquivalent: "u"
-        )
-        usernamesItem.target = self
-        menu.addItem(usernamesItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        // Demo cursor
-        let demoItem = NSMenuItem(
-            title: demoCursorWindow == nil ? "Show Demo Cursor" : "Hide Demo Cursor",
-            action: #selector(toggleDemoCursor),
-            keyEquivalent: "d"
-        )
-        demoItem.target = self
-        menu.addItem(demoItem)
-
         menu.addItem(NSMenuItem.separator())
 
         // Subscriptions section
         let subsHeader = NSMenuItem(title: "Subscriptions", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
         menu.addItem(subsHeader)
-        
-        if cursorManager.activeSubscriptions.isEmpty {
-            let noSubs = NSMenuItem(title: "  No active subscriptions", action: nil, keyEquivalent: "")
+
+        if cursorManager.allSubscriptions.isEmpty {
+            let noSubs = NSMenuItem(title: "--None yet--", action: nil, keyEquivalent: "")
             noSubs.isEnabled = false
             menu.addItem(noSubs)
         } else {
-            for userId in cursorManager.activeSubscriptions {
+            for userId in cursorManager.allSubscriptions {
+                let isEnabled = cursorManager.isSubscriptionEnabled(userId)
+
                 let subItem = NSMenuItem()
-                subItem.action = #selector(unsubscribe(_:))
+                subItem.action = #selector(toggleSubscription(_:))
                 subItem.keyEquivalent = ""
                 subItem.target = self
                 subItem.representedObject = userId
 
                 // Create attributed string with username and grey userId
                 let username = cursorManager.getUsername(for: userId) ?? "User"
-                let displayText = "  👤 \(username) (\(userId))"
+                let stateIcon = isEnabled ? "✓" : "○"
+                let displayText = "  \(stateIcon) \(username) (\(userId))"
 
                 let attributedTitle = NSMutableAttributedString(string: displayText)
 
@@ -155,7 +172,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     attributedTitle.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: userIdRange)
                 }
 
+                // Dim disabled subscriptions
+                if !isEnabled {
+                    attributedTitle.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: NSRange(location: 0, length: attributedTitle.length))
+                }
+
                 subItem.attributedTitle = attributedTitle
+
+                // Add context menu with toggle and delete options
+                let contextMenu = NSMenu()
+
+                // Toggle option (Enable/Disable based on current state)
+                let toggleTitle = isEnabled ? "Disable" : "Enable"
+                let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleSubscription(_:)), keyEquivalent: "")
+                toggleItem.target = self
+                toggleItem.representedObject = userId
+                contextMenu.addItem(toggleItem)
+
+                // Delete option
+                let deleteItem = NSMenuItem(title: "Delete", action: #selector(deleteSubscription(_:)), keyEquivalent: "")
+                deleteItem.target = self
+                deleteItem.representedObject = userId
+                contextMenu.addItem(deleteItem)
+
+                subItem.submenu = contextMenu
+
                 menu.addItem(subItem)
             }
         }
@@ -202,19 +243,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             cursorPublisher.startPublishing()
         }
-        updateStatusItemTitle()
-        updateMenu()
+
+        // Defer menu update to avoid crash when updating menu while it's active
+        DispatchQueue.main.async { [weak self] in
+            self?.updateStatusItemTitle()
+            self?.updateMenu()
+        }
     }
 
     @objc private func toggleUsernames() {
         showUsernames.toggle()
     }
-    
-    @objc private func unsubscribe(_ sender: NSMenuItem) {
+
+    @objc private func toggleSubscription(_ sender: NSMenuItem) {
         if let userId = sender.representedObject as? String {
-            cursorManager.unsubscribe(from: userId)
-            updateStatusItemTitle()
-            updateMenu()
+            cursorManager.toggleSubscription(userId)
+
+            // Defer menu update to avoid crash when updating menu while it's active
+            DispatchQueue.main.async { [weak self] in
+                self?.updateStatusItemTitle()
+                self?.updateMenu()
+            }
+        }
+    }
+
+    @objc private func deleteSubscription(_ sender: NSMenuItem) {
+        if let userId = sender.representedObject as? String {
+            cursorManager.deleteSubscription(userId)
+
+            // Defer menu update to avoid crash when updating menu while it's active
+            DispatchQueue.main.async { [weak self] in
+                self?.updateStatusItemTitle()
+                self?.updateMenu()
+            }
         }
     }
     
@@ -236,72 +297,206 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let userId = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if !userId.isEmpty {
                 cursorManager.subscribe(to: userId)
-                updateStatusItemTitle()
-                updateMenu()
+
+                // Defer menu update for consistency
+                DispatchQueue.main.async { [weak self] in
+                    self?.updateStatusItemTitle()
+                    self?.updateMenu()
+                }
             }
         }
     }
     
     @objc private func showSettings() {
         let alert = NSAlert()
-        alert.messageText = "Settings"
-        alert.informativeText = "Share your User ID with others so they can subscribe to your cursor."
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Copy ID")
-        alert.addButton(withTitle: "Close")
+        alert.messageText = "Pointer Pals"
+        alert.informativeText = ""
+        alert.addButton(withTitle: "Done")
 
-        // Create a container view
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 100))
-
-        // Username section
+        // Create a container view with proper dimensions
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 270))
+ 
+        var yPos: CGFloat = 270
+        
+        // Username section with inline save
         let usernameLabel = NSTextField(labelWithString: "Username:")
-        usernameLabel.frame = NSRect(x: 0, y: 76, width: 100, height: 17)
+        usernameLabel.frame = NSRect(x: 20, y: yPos - 20, width: 80, height: 17)
         usernameLabel.isBezeled = false
         usernameLabel.drawsBackground = false
         usernameLabel.isEditable = false
         usernameLabel.isSelectable = false
+        usernameLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
 
-        let usernameField = NSTextField(frame: NSRect(x: 0, y: 50, width: 320, height: 24))
+        let usernameField = NSTextField(frame: NSRect(x: 20, y: yPos - 46, width: 250, height: 24))
         usernameField.stringValue = networkManager.currentUsername
         usernameField.placeholderString = "Enter your username"
+        usernameField.font = NSFont.systemFont(ofSize: 13)
+
+        let saveUsernameButton = NSButton(frame: NSRect(x: 280, y: yPos - 46, width: 80, height: 24))
+        saveUsernameButton.title = "Save"
+        saveUsernameButton.bezelStyle = .rounded
+        saveUsernameButton.target = self
+        saveUsernameButton.action = #selector(saveUsernameFromSettings(_:))
+
+        yPos -= 76
 
         // User ID section
         let userIdLabel = NSTextField(labelWithString: "Your User ID:")
-        userIdLabel.frame = NSRect(x: 0, y: 26, width: 100, height: 17)
+        userIdLabel.frame = NSRect(x: 20, y: yPos, width: 100, height: 17)
         userIdLabel.isBezeled = false
         userIdLabel.drawsBackground = false
         userIdLabel.isEditable = false
         userIdLabel.isSelectable = false
-
+        userIdLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+                
         let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        userIdField.frame = NSRect(x: 0, y: 0, width: 320, height: 24)
+        userIdField.frame = NSRect(x: 110, y: yPos - 4, width: 220, height: 20)
         userIdField.isBezeled = false
         userIdField.drawsBackground = false
         userIdField.isEditable = false
         userIdField.isSelectable = true
         userIdField.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         userIdField.textColor = .secondaryLabelColor
+        userIdField.alignment = .left
+
+        yPos -= 36
+        let copyIdButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
+        copyIdButton.title = "Copy User ID to Share with Friends"
+        copyIdButton.bezelStyle = .rounded
+        if #available(macOS 11.0, *) {
+            copyIdButton.hasDestructiveAction = false
+        }
+        copyIdButton.target = self
+        copyIdButton.action = #selector(copyUserIdFromSettings)
+
+        yPos -= 28
+
+        // Visual separator
+        let separator = NSBox(frame: NSRect(x: 20, y: yPos, width: 340, height: 1))
+        separator.boxType = .separator
+
+        yPos -= 30
+
+        // Display Preferences header with inline Demo button
+        let preferencesHeader = NSTextField(labelWithString: "Display Preferences")
+        preferencesHeader.frame = NSRect(x: 20, y: yPos, width: 200, height: 17)
+        preferencesHeader.isBezeled = false
+        preferencesHeader.drawsBackground = false
+        preferencesHeader.isEditable = false
+        preferencesHeader.isSelectable = false
+        preferencesHeader.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+
+        // Demo button (inline, right-aligned)
+        let demoCursorButton = NSButton(frame: NSRect(x: 290, y: yPos - 2, width: 70, height: 24))
+        demoCursorButton.title = "Demo"
+        demoCursorButton.bezelStyle = .rounded
+        demoCursorButton.target = self
+        demoCursorButton.action = #selector(toggleDemoCursorFromSettings(_:))
+
+        // Store weak reference for updates when animation completes
+        self.demoButton = demoCursorButton
+
+        yPos -= 30
+
+        // Show Usernames switch
+        let usernamesCheckbox = NSButton(frame: NSRect(x: 20, y: yPos, width: 200, height: 18))
+        usernamesCheckbox.setButtonType(.switch)
+        usernamesCheckbox.title = "Show Usernames"
+        usernamesCheckbox.state = showUsernames ? .on : .off
+        usernamesCheckbox.target = self
+        usernamesCheckbox.action = #selector(toggleUsernamesFromSettings(_:))
+        usernamesCheckbox.font = NSFont.systemFont(ofSize: 13)
+
+        yPos -= 34
+
+        // Cursor Size slider
+        let cursorSizeLabel = NSTextField(labelWithString: "Cursor Size:")
+        cursorSizeLabel.frame = NSRect(x: 20, y: yPos, width: 80, height: 17)
+        cursorSizeLabel.isBezeled = false
+        cursorSizeLabel.drawsBackground = false
+        cursorSizeLabel.isEditable = false
+        cursorSizeLabel.isSelectable = false
+        cursorSizeLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+
+        yPos -= 26
+        let cursorSizeSlider = NSSlider(frame: NSRect(x: 20, y: yPos, width: 280, height: 24))
+        cursorSizeSlider.minValue = 0.5
+        cursorSizeSlider.maxValue = 1.0
+        cursorSizeSlider.doubleValue = Double(cursorScale)
+        cursorSizeSlider.numberOfTickMarks = 5
+        cursorSizeSlider.allowsTickMarkValuesOnly = true
+        cursorSizeSlider.isContinuous = false
+        cursorSizeSlider.target = self
+        cursorSizeSlider.action = #selector(cursorSizeSliderChanged(_:))
+
+        let sizeValueLabel = NSTextField(labelWithString: "\(Int(cursorScale * 100))%")
+        sizeValueLabel.frame = NSRect(x: 310, y: yPos + 2, width: 50, height: 20)
+        sizeValueLabel.isBezeled = false
+        sizeValueLabel.drawsBackground = false
+        sizeValueLabel.isEditable = false
+        sizeValueLabel.isSelectable = false
+        sizeValueLabel.alignment = .right
+        sizeValueLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        sizeValueLabel.textColor = .secondaryLabelColor
+        sizeValueLabel.tag = 999
 
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
+        containerView.addSubview(saveUsernameButton)
         containerView.addSubview(userIdLabel)
         containerView.addSubview(userIdField)
+        containerView.addSubview(copyIdButton)
+        containerView.addSubview(separator)
+        containerView.addSubview(preferencesHeader)
+        containerView.addSubview(usernamesCheckbox)
+        containerView.addSubview(cursorSizeLabel)
+        containerView.addSubview(cursorSizeSlider)
+        containerView.addSubview(sizeValueLabel)
+        containerView.addSubview(demoCursorButton)
 
         alert.accessoryView = containerView
         alert.window.initialFirstResponder = usernameField
 
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            // Save username
+        // Store reference for username field updates
+        usernameField.tag = 998
+
+        alert.runModal()
+    }
+
+    @objc private func saveUsernameFromSettings(_ sender: NSButton) {
+        // Find the username field
+        if let window = sender.window,
+           let containerView = window.contentView?.subviews.first(where: { $0 is NSView }),
+           let usernameField = containerView.subviews.first(where: { $0.tag == 998 }) as? NSTextField {
             let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if !newUsername.isEmpty {
                 networkManager.currentUsername = newUsername
             }
-        } else if response == .alertSecondButtonReturn {
-            // Copy ID
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(networkManager.currentUserId, forType: .string)
         }
+    }
+
+    @objc private func copyUserIdFromSettings() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(networkManager.currentUserId, forType: .string)
+    }
+
+    @objc private func toggleUsernamesFromSettings(_ sender: NSButton) {
+        showUsernames = sender.state == .on
+    }
+
+    @objc private func cursorSizeSliderChanged(_ sender: NSSlider) {
+        let newScale = CGFloat(sender.doubleValue)
+        cursorScale = newScale
+
+        // Update the value label
+        if let window = sender.window,
+           let sizeLabel = window.contentView?.viewWithTag(999) as? NSTextField {
+            sizeLabel.stringValue = "\(Int(newScale * 100))%"
+        }
+    }
+
+    @objc private func toggleDemoCursorFromSettings(_ sender: NSButton) {
+        toggleDemoCursor()
     }
     
     @objc private func toggleDemoCursor() {
@@ -310,19 +505,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             startDemoCursor()
         }
-        updateMenu()
+
+        // Defer menu update to avoid crash when updating menu while it's active
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenu()
+        }
     }
 
     private func startDemoCursor() {
-        // Create demo cursor window
-        demoCursorWindow = CursorWindow(userId: "demo")
-        demoCursorWindow?.updateUsername("Hello from PointerPals!")
+        // Create demo cursor window with current cursor scale
+        demoCursorWindow = CursorWindow(userId: "demo", cursorScale: cursorScale)
+        demoCursorWindow?.updateUsername("Hello")
 
         let duration: TimeInterval = 6.0 // Total animation duration in seconds
         let fps: Double = 60.0
         let totalFrames = Int(duration * fps)
         var currentFrame = 0
         var hasStartedFadeOut = false // Track if we've already started fading out
+
+        // Get screen dimensions to calculate perfect circle
+        guard let screen = NSScreen.main else { return }
+        let screenWidth = screen.frame.width
+        let screenHeight = screen.frame.height
+        let aspectRatio = screenWidth / screenHeight
 
         // Set initial position
         demoCursorWindow?.updatePosition(x: 0.5, y: 0.3)
@@ -333,7 +538,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             self.demoCursorWindow?.fadeIn()
 
-            self.demoTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
+            // Create timer that works even during modal dialogs
+            let timer = Timer(timeInterval: 1.0 / fps, repeats: true) { [weak self] timer in
                 guard let self = self, self.demoCursorWindow != nil else {
                     timer.invalidate()
                     return
@@ -350,13 +556,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let angle = startAngle + (eased * 2.0 * Double.pi)
 
                 // Circle parameters (centered on screen)
-                let radius = 0.2
+                // Use smaller radius in Y to account for aspect ratio and make perfect circle
+                let radiusY = 0.2
+                let radiusX = radiusY / aspectRatio
                 let centerX = 0.5
                 let centerY = 0.5
 
                 // Calculate position on circle
-                let x = centerX + (radius * cos(angle))
-                let y = centerY + (radius * sin(angle))
+                let x = centerX + (radiusX * cos(angle))
+                let y = centerY + (radiusY * sin(angle))
 
                 // Update cursor position
                 self.demoCursorWindow?.updatePosition(x: x, y: y)
@@ -375,9 +583,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     // Cleanup after fade out completes
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                         self?.cleanupDemoCursor()
+                        self?.updateDemoButtonTitle()
                     }
                 }
             }
+
+            // Add timer to run loop with common mode so it works during modal dialogs
+            RunLoop.current.add(timer, forMode: .common)
+            self.demoTimer = timer
         }
     }
 
@@ -414,7 +627,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.orderOut(nil)
         }
 
-        updateMenu()
+        // Note: updateMenu() is called by toggleDemoCursor() which calls this method
+    }
+
+    private func updateDemoButtonTitle() {
+        // Button now has static "Demo Cursor" title - no update needed
     }
 
     @objc private func quit() {

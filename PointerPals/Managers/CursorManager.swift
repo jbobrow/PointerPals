@@ -7,22 +7,39 @@ class CursorManager {
     private var cancellables = Set<AnyCancellable>()
     private var inactivityTimers: [String: Timer] = [:]
     private var shouldShowUsernames: Bool = false
+    private var cursorScale: CGFloat = PointerPalsConfig.defaultCursorScale
     private var usernames: [String: String] = [:] // userId -> username mapping
+    private var subscriptionStates: [String: Bool] = [:] // userId -> isEnabled
 
     // Notification when subscriptions or usernames change
     let subscriptionsDidChange = PassthroughSubject<Void, Never>()
 
-    var activeSubscriptions: [String] {
-        Array(cursorWindows.keys)
+    // UserDefaults keys for persistence
+    private let subscriptionsKey = "PointerPals_Subscriptions"
+    private let usernamesKey = "PointerPals_SubscriptionUsernames"
+    private let subscriptionStatesKey = "PointerPals_SubscriptionStates"
+
+    var allSubscriptions: [String] {
+        Array(subscriptionStates.keys)
+    }
+
+    var activeSubscriptionsCount: Int {
+        subscriptionStates.values.filter { $0 }.count
     }
 
     func getUsername(for userId: String) -> String? {
         return usernames[userId]
     }
+
+    func isSubscriptionEnabled(_ userId: String) -> Bool {
+        return subscriptionStates[userId] ?? false
+    }
     
-    init(networkManager: NetworkManager) {
+    init(networkManager: NetworkManager, cursorScale: CGFloat = PointerPalsConfig.defaultCursorScale) {
         self.networkManager = networkManager
+        self.cursorScale = cursorScale
         setupSubscriptions()
+        loadSubscriptions()
     }
     
     private func setupSubscriptions() {
@@ -40,23 +57,59 @@ class CursorManager {
             }
             .store(in: &cancellables)
     }
+
+    private func saveSubscriptions() {
+        let subscriptionList = Array(subscriptionStates.keys)
+        UserDefaults.standard.set(subscriptionList, forKey: subscriptionsKey)
+        UserDefaults.standard.set(usernames, forKey: usernamesKey)
+        UserDefaults.standard.set(subscriptionStates, forKey: subscriptionStatesKey)
+    }
+
+    private func loadSubscriptions() {
+        // Load saved usernames first
+        if let savedUsernames = UserDefaults.standard.dictionary(forKey: usernamesKey) as? [String: String] {
+            usernames = savedUsernames
+        }
+
+        // Load subscription states
+        if let savedStates = UserDefaults.standard.dictionary(forKey: subscriptionStatesKey) as? [String: Bool] {
+            subscriptionStates = savedStates
+        }
+
+        // Load and restore subscriptions (for backwards compatibility, if states not found)
+        if subscriptionStates.isEmpty,
+           let savedSubscriptions = UserDefaults.standard.array(forKey: subscriptionsKey) as? [String] {
+            for userId in savedSubscriptions {
+                subscriptionStates[userId] = true
+            }
+        }
+
+        // Enable all subscriptions that are marked as enabled
+        for (userId, isEnabled) in subscriptionStates where isEnabled {
+            enableSubscription(userId: userId)
+        }
+    }
     
     func subscribe(to userId: String) {
-        guard cursorWindows[userId] == nil else {
-            print("Already subscribed to \(userId)")
+        // Check if already exists
+        if subscriptionStates[userId] != nil {
+            print("Subscription already exists for \(userId)")
             return
         }
 
         // Check max subscriptions limit
         if PointerPalsConfig.maxSubscriptions > 0 &&
-           cursorWindows.count >= PointerPalsConfig.maxSubscriptions {
+           subscriptionStates.count >= PointerPalsConfig.maxSubscriptions {
             print("Maximum subscription limit reached (\(PointerPalsConfig.maxSubscriptions))")
             return
         }
 
-        let window = CursorWindow(userId: userId)
-        cursorWindows[userId] = window
-        networkManager.subscribeTo(userId: userId)
+        // Add subscription in enabled state
+        subscriptionStates[userId] = true
+        enableSubscription(userId: userId)
+
+        // Save subscriptions to persist across launches
+        saveSubscriptions()
 
         // Notify that subscriptions changed
         subscriptionsDidChange.send()
@@ -65,25 +118,65 @@ class CursorManager {
             print("Subscribed to \(userId)")
         }
     }
-    
-    func unsubscribe(from userId: String) {
+
+    func toggleSubscription(_ userId: String) {
+        guard let isEnabled = subscriptionStates[userId] else {
+            print("No subscription found for \(userId)")
+            return
+        }
+
+        if isEnabled {
+            disableSubscription(userId: userId)
+        } else {
+            enableSubscription(userId: userId)
+        }
+
+        subscriptionStates[userId] = !isEnabled
+        saveSubscriptions()
+        subscriptionsDidChange.send()
+
+        print("\(isEnabled ? "Disabled" : "Enabled") subscription for \(userId)")
+    }
+
+    func deleteSubscription(_ userId: String) {
+        // Disable first if enabled
+        if subscriptionStates[userId] == true {
+            disableSubscription(userId: userId)
+        }
+
+        // Remove from all collections
+        subscriptionStates.removeValue(forKey: userId)
+        usernames.removeValue(forKey: userId)
+
+        // Save and notify
+        saveSubscriptions()
+        subscriptionsDidChange.send()
+
+        print("Deleted subscription for \(userId)")
+    }
+
+    private func enableSubscription(userId: String) {
+        guard cursorWindows[userId] == nil else {
+            return
+        }
+
+        let window = CursorWindow(userId: userId, cursorScale: cursorScale)
+        cursorWindows[userId] = window
+        networkManager.subscribeTo(userId: userId)
+    }
+
+    private func disableSubscription(userId: String) {
         if let window = cursorWindows[userId] {
-            window.close()
+            // Hide window and let it deallocate naturally to avoid crashes
+            // DO NOT call close() - causes crashes when animation handlers access the window
+            window.orderOut(nil)
             cursorWindows.removeValue(forKey: userId)
         }
 
         inactivityTimers[userId]?.invalidate()
         inactivityTimers.removeValue(forKey: userId)
 
-        // Clean up stored username
-        usernames.removeValue(forKey: userId)
-
         networkManager.unsubscribeFrom(userId: userId)
-
-        // Notify that subscriptions changed
-        subscriptionsDidChange.send()
-
-        print("Unsubscribed from \(userId)")
     }
 
     func setUsernameVisibility(_ visible: Bool) {
@@ -92,6 +185,18 @@ class CursorManager {
         // Update all existing cursor windows
         for window in cursorWindows.values {
             window.setUsernameVisibility(visible)
+        }
+    }
+
+    func setCursorScale(_ scale: CGFloat) {
+        cursorScale = scale
+
+        // Recreate all active cursor windows with new scale
+        let activeUserIds = Array(cursorWindows.keys)
+        for userId in activeUserIds {
+            // Disable and re-enable to recreate window with new scale
+            disableSubscription(userId: userId)
+            enableSubscription(userId: userId)
         }
     }
     
@@ -110,8 +215,9 @@ class CursorManager {
             usernameChanged = false
         }
 
-        // Notify subscribers if username changed
+        // Notify subscribers and persist if username changed
         if usernameChanged {
+            saveSubscriptions()
             subscriptionsDidChange.send()
         }
 
@@ -146,6 +252,9 @@ class CursorManager {
         // Update stored username
         usernames[userId] = username
 
+        // Persist the updated username
+        saveSubscriptions()
+
         // Update the cursor window if usernames are visible
         if shouldShowUsernames, let window = cursorWindows[userId] {
             window.updateUsername(username)
@@ -157,7 +266,8 @@ class CursorManager {
     
     deinit {
         for window in cursorWindows.values {
-            window.close()
+            // Hide window and let it deallocate naturally
+            window.orderOut(nil)
         }
         for timer in inactivityTimers.values {
             timer.invalidate()

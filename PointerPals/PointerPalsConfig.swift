@@ -27,13 +27,17 @@ struct PointerPalsConfig {
     static let onlyPublishOnChange = true
     
     // MARK: - Cursor Display
-    
+
     /// Size of the cursor overlay window
-    static let cursorSize = CGSize(width: 20, height: 28)
-    
+    static let cursorSize = CGSize(width: 14, height: 24)
+
+    /// Default cursor scale (0.75 = 75% of natural size)
+    /// This can be overridden by user preference in settings
+    static let defaultCursorScale: CGFloat = 0.75
+
     /// Opacity of active subscribed cursors (0.0 to 1.0)
     /// 1.0 = fully opaque, 0.0 = invisible
-    static let activeCursorOpacity: Double = 0.7
+    static let activeCursorOpacity: Double = 1.0
     
     /// Duration of fade-in animation (seconds)
     static let fadeInDuration: Double = 0.3
@@ -67,13 +71,16 @@ struct PointerPalsConfig {
     static let ignoreMouseEvents = true
     
     // MARK: - User Interface
-    
-    /// Menu bar icon when publishing
-    static let publishingIcon = "📍"
-    
-    /// Menu bar icon when not publishing
-    static let notPublishingIcon = "💤"
-    
+
+    /// Menu bar icon when publishing (regardless of subscriptions)
+    static let publishingIcon = "pointer.arrow.motionlines"
+
+    /// Menu bar icon when not publishing but has active subscriptions
+    static let activeSubscriptionsIcon = "pointer.arrow"
+
+    /// Menu bar icon when idle (not publishing and no active subscriptions)
+    static let idleIcon = "pointer.arrow"
+
     /// Show subscription count in menu bar
     static let showSubscriptionCount = true
     
