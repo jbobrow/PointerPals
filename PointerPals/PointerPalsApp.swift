@@ -371,30 +371,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Stop when complete
                 if currentFrame >= totalFrames {
                     timer.invalidate()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.stopDemoCursor()
+                    self.demoTimer = nil
+
+                    // Cleanup after fade out completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                        self?.cleanupDemoCursor()
                     }
                 }
             }
         }
     }
 
+    private func cleanupDemoCursor() {
+        guard let window = demoCursorWindow else { return }
+
+        // Clear reference first
+        demoCursorWindow = nil
+
+        // Close window
+        window.close()
+
+        // Update menu after everything is cleaned up
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenu()
+        }
+    }
+
     private func stopDemoCursor() {
-        // Stop timer first
+        // User manually stopped, clean up immediately
         demoTimer?.invalidate()
         demoTimer = nil
 
-        // Capture window to close it after menu updates
-        let windowToClose = demoCursorWindow
-        demoCursorWindow = nil
-
-        // Update menu first (on main thread)
-        updateMenu()
-
-        // Close window after a brief delay to ensure menu is done updating
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            windowToClose?.close()
+        if let window = demoCursorWindow {
+            demoCursorWindow = nil
+            window.close()
         }
+
+        updateMenu()
     }
 
     @objc private func quit() {
