@@ -381,10 +381,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         yPos -= 26
         let cursorSizeSlider = NSSlider(frame: NSRect(x: 0, y: yPos, width: 270, height: 24))
-        cursorSizeSlider.minValue = 0.5  // 50% of natural size
-        cursorSizeSlider.maxValue = 2.0  // 200% of natural size
-        cursorSizeSlider.doubleValue = Double(cursorScale)
-        cursorSizeSlider.isContinuous = true
+
+        // Set up discrete values: 0.5, 0.75, 1.0, 1.25, 1.5, 2.0
+        let scaleValues: [CGFloat] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+        cursorSizeSlider.minValue = 0  // Index 0
+        cursorSizeSlider.maxValue = 5  // Index 5
+        cursorSizeSlider.numberOfTickMarks = 6
+        cursorSizeSlider.allowsTickMarkValuesOnly = true
+        cursorSizeSlider.isContinuous = false  // Only update on mouse up
+
+        // Find current index based on current cursorScale
+        let currentIndex = scaleValues.firstIndex(where: { abs($0 - cursorScale) < 0.01 }) ?? 1
+        cursorSizeSlider.intValue = Int32(currentIndex)
 
         let sizeValueLabel = NSTextField(labelWithString: "\(Int(cursorScale * 100))%")
         sizeValueLabel.frame = NSRect(x: 280, y: yPos, width: 60, height: 24)
@@ -450,14 +458,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func cursorSizeSliderChanged(_ sender: NSSlider) {
-        // Update the cursor scale immediately
-        cursorScale = CGFloat(sender.doubleValue)
+        // Map slider index to actual scale value
+        let scaleValues: [CGFloat] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+        let index = Int(sender.intValue)
+        guard index >= 0 && index < scaleValues.count else { return }
+
+        let newScale = scaleValues[index]
+
+        // Update the cursor scale (this will trigger the didSet observer)
+        cursorScale = newScale
 
         // Update the value label
         if let window = sender.window,
            let containerView = window.contentView?.subviews.first(where: { $0 is NSView }),
            let sizeLabel = containerView.subviews.first(where: { $0.tag == 999 }) as? NSTextField {
-            sizeLabel.stringValue = "\(Int(sender.doubleValue * 100))%"
+            sizeLabel.stringValue = "\(Int(newScale * 100))%"
         }
     }
 
