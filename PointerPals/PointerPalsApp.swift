@@ -391,8 +391,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Remove all window-level animations
         window.animations = [:]
 
-        // Remove all layer animations from window and content view
-        window.layer?.removeAllAnimations()
+        // Remove all layer animations from content view hierarchy
         window.contentView?.layer?.removeAllAnimations()
         window.contentView?.subviews.forEach { subview in
             subview.layer?.removeAllAnimations()
@@ -420,7 +419,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             // Thoroughly remove all animations
             window.animations = [:]
-            window.layer?.removeAllAnimations()
             window.contentView?.layer?.removeAllAnimations()
             window.contentView?.subviews.forEach { subview in
                 subview.layer?.removeAllAnimations()
