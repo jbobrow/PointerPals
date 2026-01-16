@@ -387,18 +387,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Clear reference so menu updates
         demoCursorWindow = nil
 
-        // Simply hide the window and let animations finish naturally
-        // Don't close the window - let it be deallocated when animations complete
+        // Hide the window - it will deallocate naturally when all animation
+        // completion handlers release their references
+        // DO NOT call close() - this causes crashes when animation handlers
+        // try to access the window after it's been explicitly closed
         window.orderOut(nil)
 
         // Update menu to show "Show Demo Cursor" again
         updateMenu()
 
-        // Close the window after a long delay to allow all animations to complete
-        // The delay is intentionally generous to ensure all run loop events process
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            window.close()
-        }
+        // Window will be deallocated automatically when:
+        // 1. All NSAnimationContext completion handlers finish
+        // 2. All animator() proxy references are released
+        // 3. No other strong references remain
     }
 
     private func stopDemoCursor() {
@@ -409,13 +410,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let window = demoCursorWindow {
             demoCursorWindow = nil
 
-            // Hide window immediately
+            // Hide window - let it deallocate naturally when animations finish
             window.orderOut(nil)
-
-            // Close after delay to let animations complete
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                window.close()
-            }
         }
 
         updateMenu()
