@@ -388,18 +388,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Clear reference immediately
         demoCursorWindow = nil
 
-        // Stop ALL animations to prevent use-after-free
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0
-            window.animator().alphaValue = 0
-        }, completionHandler: nil)
+        // CRITICAL: Remove ALL animations from the window
+        // This prevents crash from animations trying to access deallocated window
+        window.animations = [:]
 
-        // Hide window immediately
+        // Hide window immediately (no animation)
         window.alphaValue = 0.0
         window.orderOut(nil)
 
         // Close and update menu after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             window.close()
             self?.updateMenu()
         }
@@ -412,6 +410,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let window = demoCursorWindow {
             demoCursorWindow = nil
+
+            // Remove all animations
+            window.animations = [:]
 
             // Stop animations
             window.alphaValue = 0.0
