@@ -313,112 +313,127 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.informativeText = ""
         alert.addButton(withTitle: "Done")
 
-        // Create a container view
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 340, height: 240))
+        // Create a container view with proper dimensions
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 280))
 
-        var yPos: CGFloat = 220
+        var yPos: CGFloat = 280
 
         // Username section with inline save
         let usernameLabel = NSTextField(labelWithString: "Username:")
-        usernameLabel.frame = NSRect(x: 0, y: yPos, width: 80, height: 17)
+        usernameLabel.frame = NSRect(x: 20, y: yPos - 20, width: 80, height: 17)
         usernameLabel.isBezeled = false
         usernameLabel.drawsBackground = false
         usernameLabel.isEditable = false
         usernameLabel.isSelectable = false
+        usernameLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
 
-        yPos -= 26
-        let usernameField = NSTextField(frame: NSRect(x: 0, y: yPos, width: 250, height: 24))
+        let usernameField = NSTextField(frame: NSRect(x: 20, y: yPos - 46, width: 250, height: 24))
         usernameField.stringValue = networkManager.currentUsername
         usernameField.placeholderString = "Enter your username"
+        usernameField.font = NSFont.systemFont(ofSize: 13)
 
-        let saveUsernameButton = NSButton(frame: NSRect(x: 260, y: yPos, width: 80, height: 24))
+        let saveUsernameButton = NSButton(frame: NSRect(x: 280, y: yPos - 46, width: 80, height: 24))
         saveUsernameButton.title = "Save"
         saveUsernameButton.bezelStyle = .rounded
         saveUsernameButton.target = self
         saveUsernameButton.action = #selector(saveUsernameFromSettings(_:))
 
+        yPos -= 66
+
         // User ID section
-        yPos -= 30
         let userIdLabel = NSTextField(labelWithString: "Your User ID:")
-        userIdLabel.frame = NSRect(x: 0, y: yPos, width: 100, height: 17)
+        userIdLabel.frame = NSRect(x: 20, y: yPos, width: 100, height: 17)
         userIdLabel.isBezeled = false
         userIdLabel.drawsBackground = false
         userIdLabel.isEditable = false
         userIdLabel.isSelectable = false
+        userIdLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
 
-        yPos -= 26
+        yPos -= 24
         let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        userIdField.frame = NSRect(x: 0, y: yPos, width: 340, height: 24)
+        userIdField.frame = NSRect(x: 20, y: yPos, width: 340, height: 20)
         userIdField.isBezeled = false
         userIdField.drawsBackground = false
         userIdField.isEditable = false
         userIdField.isSelectable = true
-        userIdField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        userIdField.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         userIdField.textColor = .secondaryLabelColor
+        userIdField.alignment = .left
 
-        yPos -= 32
-        let copyIdButton = NSButton(frame: NSRect(x: 0, y: yPos, width: 340, height: 32))
+        yPos -= 36
+        let copyIdButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
         copyIdButton.title = "Copy User ID to Share with Friends"
         copyIdButton.bezelStyle = .rounded
-        copyIdButton.bezelColor = .controlAccentColor
-        copyIdButton.contentTintColor = .controlAccentColor
+        if #available(macOS 11.0, *) {
+            copyIdButton.hasDestructiveAction = false
+        }
         copyIdButton.target = self
         copyIdButton.action = #selector(copyUserIdFromSettings)
 
-        // Visual separator and Display Preferences header
-        yPos -= 24
-        let separator = NSBox(frame: NSRect(x: 0, y: yPos, width: 340, height: 1))
+        yPos -= 28
+
+        // Visual separator
+        let separator = NSBox(frame: NSRect(x: 20, y: yPos, width: 340, height: 1))
         separator.boxType = .separator
 
-        yPos -= 26
+        yPos -= 30
+
+        // Display Preferences header
         let preferencesHeader = NSTextField(labelWithString: "Display Preferences")
-        preferencesHeader.frame = NSRect(x: 0, y: yPos, width: 200, height: 17)
+        preferencesHeader.frame = NSRect(x: 20, y: yPos, width: 200, height: 17)
         preferencesHeader.isBezeled = false
         preferencesHeader.drawsBackground = false
         preferencesHeader.isEditable = false
         preferencesHeader.isSelectable = false
         preferencesHeader.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
 
+        yPos -= 30
+
         // Show Usernames switch
-        yPos -= 28
-        let usernamesCheckbox = NSButton(frame: NSRect(x: 0, y: yPos, width: 200, height: 18))
+        let usernamesCheckbox = NSButton(frame: NSRect(x: 20, y: yPos, width: 200, height: 18))
         usernamesCheckbox.setButtonType(.switch)
         usernamesCheckbox.title = "Show Usernames"
         usernamesCheckbox.state = showUsernames ? .on : .off
         usernamesCheckbox.target = self
         usernamesCheckbox.action = #selector(toggleUsernamesFromSettings(_:))
+        usernamesCheckbox.font = NSFont.systemFont(ofSize: 13)
+
+        yPos -= 34
 
         // Cursor Size slider
-        yPos -= 24
         let cursorSizeLabel = NSTextField(labelWithString: "Cursor Size:")
-        cursorSizeLabel.frame = NSRect(x: 0, y: yPos, width: 80, height: 17)
+        cursorSizeLabel.frame = NSRect(x: 20, y: yPos, width: 80, height: 17)
         cursorSizeLabel.isBezeled = false
         cursorSizeLabel.drawsBackground = false
         cursorSizeLabel.isEditable = false
         cursorSizeLabel.isSelectable = false
+        cursorSizeLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
 
         yPos -= 26
-        let cursorSizeSlider = NSSlider(frame: NSRect(x: 0, y: yPos, width: 270, height: 24))
+        let cursorSizeSlider = NSSlider(frame: NSRect(x: 20, y: yPos, width: 280, height: 24))
         cursorSizeSlider.minValue = 0.5
         cursorSizeSlider.maxValue = 1.0
         cursorSizeSlider.doubleValue = Double(cursorScale)
         cursorSizeSlider.numberOfTickMarks = 6
-        cursorSizeSlider.isContinuous = false  // Only update on mouse release
+        cursorSizeSlider.isContinuous = false
         cursorSizeSlider.target = self
         cursorSizeSlider.action = #selector(cursorSizeSliderChanged(_:))
 
         let sizeValueLabel = NSTextField(labelWithString: "\(Int(cursorScale * 100))%")
-        sizeValueLabel.frame = NSRect(x: 280, y: yPos, width: 60, height: 24)
+        sizeValueLabel.frame = NSRect(x: 310, y: yPos + 2, width: 50, height: 20)
         sizeValueLabel.isBezeled = false
         sizeValueLabel.drawsBackground = false
         sizeValueLabel.isEditable = false
         sizeValueLabel.isSelectable = false
         sizeValueLabel.alignment = .right
+        sizeValueLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        sizeValueLabel.textColor = .secondaryLabelColor
         sizeValueLabel.tag = 999
 
+        yPos -= 48
+
         // Demo Cursor button (centered)
-        yPos -= 40
-        let demoCursorButton = NSButton(frame: NSRect(x: 90, y: yPos, width: 160, height: 28))
+        let demoCursorButton = NSButton(frame: NSRect(x: 110, y: yPos, width: 160, height: 32))
         demoCursorButton.title = "Demo Cursor"
         demoCursorButton.bezelStyle = .rounded
         demoCursorButton.target = self
