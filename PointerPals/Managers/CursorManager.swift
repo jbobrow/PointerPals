@@ -96,7 +96,9 @@ class CursorManager {
     
     func unsubscribe(from userId: String) {
         if let window = cursorWindows[userId] {
-            window.close()
+            // Hide window and let it deallocate naturally to avoid crashes
+            // DO NOT call close() - causes crashes when animation handlers access the window
+            window.orderOut(nil)
             cursorWindows.removeValue(forKey: userId)
         }
 
@@ -192,7 +194,8 @@ class CursorManager {
     
     deinit {
         for window in cursorWindows.values {
-            window.close()
+            // Hide window and let it deallocate naturally
+            window.orderOut(nil)
         }
         for timer in inactivityTimers.values {
             timer.invalidate()
