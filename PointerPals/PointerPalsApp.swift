@@ -477,7 +477,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             // Show confirmation dialog for unsaved changes
             let confirmAlert = NSAlert()
             confirmAlert.messageText = "Unsaved Changes"
-            confirmAlert.informativeText = "You have unsaved changes to your username. Would you like to save them?"
+
+            // Create attributed text with the new username in bold
+            let message = "Save username as "
+            let usernameText = "\"\(currentText)\""
+            let question = "?"
+
+            let attributedString = NSMutableAttributedString()
+
+            // Regular text
+            attributedString.append(NSAttributedString(string: message, attributes: [
+                .font: NSFont.systemFont(ofSize: 13)
+            ]))
+
+            // Bold username
+            attributedString.append(NSAttributedString(string: usernameText, attributes: [
+                .font: NSFont.boldSystemFont(ofSize: 13)
+            ]))
+
+            // Regular text
+            attributedString.append(NSAttributedString(string: question, attributes: [
+                .font: NSFont.systemFont(ofSize: 13)
+            ]))
+
+            // Create a custom label for the message
+            let messageLabel = NSTextField(labelWithAttributedString: attributedString)
+            messageLabel.frame = NSRect(x: 0, y: 0, width: 260, height: 20)
+            messageLabel.alignment = .left
+
+            // Set as accessory view
+            confirmAlert.accessoryView = messageLabel
+
             confirmAlert.addButton(withTitle: "Save")
             confirmAlert.addButton(withTitle: "Discard")
             confirmAlert.alertStyle = .warning
