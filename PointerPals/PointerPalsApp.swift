@@ -492,15 +492,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         guard let textField = obj.object as? NSTextField,
               textField.tag == 998 else { return }
 
-        // Find the save button and enable/disable based on whether username changed
-        if let window = textField.window,
-           let containerView = window.contentView?.subviews.first(where: { $0 is NSView }),
-           let saveButton = containerView.subviews.first(where: { $0.tag == 997 }) as? NSButton {
-
-            let currentText = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            let hasChanged = currentText != originalUsername && !currentText.isEmpty
-            saveButton.isEnabled = hasChanged
+        // Find the save button in the same container view (superview of textField)
+        guard let containerView = textField.superview,
+              let saveButton = containerView.subviews.first(where: { $0.tag == 997 }) as? NSButton else {
+            return
         }
+
+        let currentText = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasChanged = currentText != originalUsername && !currentText.isEmpty
+        saveButton.isEnabled = hasChanged
     }
 
     @objc private func copyUserIdFromSettings() {
