@@ -330,7 +330,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         let usernameField = NSTextField(frame: NSRect(x: 20, y: yPos - 46, width: 250, height: 24))
         usernameField.stringValue = networkManager.currentUsername
-        usernameField.placeholderString = "Enter your username"
+        usernameField.placeholderString = "Enter your username (max \(PointerPalsConfig.maxUsernameLength) chars)"
         usernameField.font = NSFont.systemFont(ofSize: 13)
         usernameField.delegate = self
 
@@ -478,13 +478,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         }
 
         let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !newUsername.isEmpty {
-            networkManager.currentUsername = newUsername
 
-            // Update original username and disable save button after successful save
-            originalUsername = newUsername
-            sender.isEnabled = false
+        // Validate username: not empty and within length limit
+        guard !newUsername.isEmpty,
+              newUsername.count <= PointerPalsConfig.maxUsernameLength else {
+            return
         }
+
+        networkManager.currentUsername = newUsername
+
+        // Update original username and disable save button after successful save
+        originalUsername = newUsername
+        sender.isEnabled = false
     }
 
     // MARK: - NSTextFieldDelegate
@@ -492,6 +497,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     func controlTextDidChange(_ obj: Notification) {
         guard let textField = obj.object as? NSTextField,
               textField.tag == 998 else { return }
+
+        // Enforce maximum username length
+        if textField.stringValue.count > PointerPalsConfig.maxUsernameLength {
+            // Truncate to max length
+            let truncated = String(textField.stringValue.prefix(PointerPalsConfig.maxUsernameLength))
+            textField.stringValue = truncated
+
+            // Provide audio feedback that limit was reached
+            NSSound.beep()
+        }
 
         // Find the save button in the same container view (superview of textField)
         guard let containerView = textField.superview,
