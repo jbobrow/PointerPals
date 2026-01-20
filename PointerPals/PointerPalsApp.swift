@@ -471,18 +471,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     }
 
     @objc private func saveUsernameFromSettings(_ sender: NSButton) {
-        // Find the username field
-        if let window = sender.window,
-           let containerView = window.contentView?.subviews.first(where: { $0 is NSView }),
-           let usernameField = containerView.subviews.first(where: { $0.tag == 998 }) as? NSTextField {
-            let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !newUsername.isEmpty {
-                networkManager.currentUsername = newUsername
+        // Find the username field in the same container view (superview of button)
+        guard let containerView = sender.superview,
+              let usernameField = containerView.subviews.first(where: { $0.tag == 998 }) as? NSTextField else {
+            return
+        }
 
-                // Update original username and disable save button after successful save
-                originalUsername = newUsername
-                sender.isEnabled = false
-            }
+        let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !newUsername.isEmpty {
+            networkManager.currentUsername = newUsername
+
+            // Update original username and disable save button after successful save
+            originalUsername = newUsername
+            sender.isEnabled = false
         }
     }
 
