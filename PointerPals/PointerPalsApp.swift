@@ -468,6 +468,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         usernameField.tag = 998
 
         alert.runModal()
+
+        // Check for unsaved changes after dialog closes
+        let currentText = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasUnsavedChanges = !currentText.isEmpty && currentText != originalUsername
+
+        if hasUnsavedChanges {
+            // Show confirmation dialog for unsaved changes
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "Unsaved Changes"
+            confirmAlert.informativeText = "You have unsaved changes to your username. Would you like to save them?"
+            confirmAlert.addButton(withTitle: "Save")
+            confirmAlert.addButton(withTitle: "Discard")
+            confirmAlert.alertStyle = .warning
+
+            let response = confirmAlert.runModal()
+            if response == .alertFirstButtonReturn {
+                // Save the username
+                if currentText.count <= PointerPalsConfig.maxUsernameLength {
+                    networkManager.currentUsername = currentText
+                    originalUsername = currentText
+                }
+            }
+            // If discard, do nothing
+        }
     }
 
     @objc private func saveUsernameFromSettings(_ sender: NSButton) {
