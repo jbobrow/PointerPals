@@ -37,7 +37,8 @@ class CursorWindow: NSWindow {
 
         // Calculate window size to accommodate cursor and label
         let labelHeight: CGFloat = 11
-        let windowWidth = max(scaledCursorSize.width, 100)
+        // Ensure window is wide enough for max username length (32 chars * ~7.5 pts/char ≈ 240)
+        let windowWidth = max(scaledCursorSize.width, 250)
         let windowHeight = scaledCursorSize.height + labelHeight
         let windowSize = CGSize(width: windowWidth, height: windowHeight)
 
@@ -243,7 +244,8 @@ struct CursorWindowPreview: NSViewRepresentable {
         usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
 
         let labelHeight: CGFloat = 18
-        let windowWidth = max(scaledCursorSize.width, 100)
+        // Ensure window is wide enough for max username length (32 chars * ~7.5 pts/char ≈ 240)
+        let windowWidth = max(scaledCursorSize.width, 250)
 
         // Position cursor above the username label
         cursorImageView.frame.origin = CGPoint(x: 0, y: labelHeight)

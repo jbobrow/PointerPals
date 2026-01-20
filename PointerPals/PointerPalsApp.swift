@@ -330,7 +330,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         let usernameField = NSTextField(frame: NSRect(x: 20, y: yPos - 46, width: 250, height: 24))
         usernameField.stringValue = networkManager.currentUsername
-        usernameField.placeholderString = "Enter your username (max \(PointerPalsConfig.maxUsernameLength) chars)"
+        usernameField.placeholderString = "Enter your username"
         usernameField.font = NSFont.systemFont(ofSize: 13)
         usernameField.delegate = self
 
