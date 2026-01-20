@@ -19,7 +19,7 @@ struct PointerPalsApp: App {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private var statusItem: NSStatusItem!
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
@@ -28,6 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var demoCursorWindow: CursorWindow?
     private var demoTimer: Timer?
     private weak var demoButton: NSButton?  // Weak reference to demo button for updates
+    private var originalUsername: String = ""  // Store original username for comparison
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -331,12 +332,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         usernameField.stringValue = networkManager.currentUsername
         usernameField.placeholderString = "Enter your username"
         usernameField.font = NSFont.systemFont(ofSize: 13)
+        usernameField.delegate = self
+
+        // Store original username for comparison
+        originalUsername = networkManager.currentUsername
 
         let saveUsernameButton = NSButton(frame: NSRect(x: 280, y: yPos - 46, width: 80, height: 24))
         saveUsernameButton.title = "Save"
         saveUsernameButton.bezelStyle = .rounded
         saveUsernameButton.target = self
         saveUsernameButton.action = #selector(saveUsernameFromSettings(_:))
+        saveUsernameButton.isEnabled = false  // Disabled initially since username hasn't changed
+        saveUsernameButton.tag = 997  // Tag for finding the button later
 
         yPos -= 76
 
@@ -461,18 +468,109 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         usernameField.tag = 998
 
         alert.runModal()
+
+        // Check for unsaved changes after dialog closes
+        let currentText = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasUnsavedChanges = !currentText.isEmpty && currentText != originalUsername
+
+        if hasUnsavedChanges {
+            // Show confirmation dialog for unsaved changes
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "Unsaved Changes"
+
+            // Create attributed text with the new username in bold
+            let message = "Save username as "
+            let usernameText = "\"\(currentText)\""
+            let question = "?"
+
+            let attributedString = NSMutableAttributedString()
+
+            // Regular text
+            attributedString.append(NSAttributedString(string: message, attributes: [
+                .font: NSFont.systemFont(ofSize: 13)
+            ]))
+
+            // Bold username
+            attributedString.append(NSAttributedString(string: usernameText, attributes: [
+                .font: NSFont.boldSystemFont(ofSize: 13)
+            ]))
+
+            // Regular text
+            attributedString.append(NSAttributedString(string: question, attributes: [
+                .font: NSFont.systemFont(ofSize: 13)
+            ]))
+
+            // Create a custom label for the message
+            let messageLabel = NSTextField(labelWithAttributedString: attributedString)
+            messageLabel.frame = NSRect(x: 0, y: 0, width: 260, height: 20)
+            messageLabel.alignment = .left
+
+            // Set as accessory view
+            confirmAlert.accessoryView = messageLabel
+
+            confirmAlert.addButton(withTitle: "Save")
+            confirmAlert.addButton(withTitle: "Discard")
+            confirmAlert.alertStyle = .warning
+
+            let response = confirmAlert.runModal()
+            if response == .alertFirstButtonReturn {
+                // Save the username
+                if currentText.count <= PointerPalsConfig.maxUsernameLength {
+                    networkManager.currentUsername = currentText
+                    originalUsername = currentText
+                }
+            }
+            // If discard, do nothing
+        }
     }
 
     @objc private func saveUsernameFromSettings(_ sender: NSButton) {
-        // Find the username field
-        if let window = sender.window,
-           let containerView = window.contentView?.subviews.first(where: { $0 is NSView }),
-           let usernameField = containerView.subviews.first(where: { $0.tag == 998 }) as? NSTextField {
-            let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !newUsername.isEmpty {
-                networkManager.currentUsername = newUsername
-            }
+        // Find the username field in the same container view (superview of button)
+        guard let containerView = sender.superview,
+              let usernameField = containerView.subviews.first(where: { $0.tag == 998 }) as? NSTextField else {
+            return
         }
+
+        let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Validate username: not empty and within length limit
+        guard !newUsername.isEmpty,
+              newUsername.count <= PointerPalsConfig.maxUsernameLength else {
+            return
+        }
+
+        networkManager.currentUsername = newUsername
+
+        // Update original username and disable save button after successful save
+        originalUsername = newUsername
+        sender.isEnabled = false
+    }
+
+    // MARK: - NSTextFieldDelegate
+
+    func controlTextDidChange(_ obj: Notification) {
+        guard let textField = obj.object as? NSTextField,
+              textField.tag == 998 else { return }
+
+        // Enforce maximum username length
+        if textField.stringValue.count > PointerPalsConfig.maxUsernameLength {
+            // Truncate to max length
+            let truncated = String(textField.stringValue.prefix(PointerPalsConfig.maxUsernameLength))
+            textField.stringValue = truncated
+
+            // Provide audio feedback that limit was reached
+            NSSound.beep()
+        }
+
+        // Find the save button in the same container view (superview of textField)
+        guard let containerView = textField.superview,
+              let saveButton = containerView.subviews.first(where: { $0.tag == 997 }) as? NSButton else {
+            return
+        }
+
+        let currentText = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasChanged = currentText != originalUsername && !currentText.isEmpty
+        saveButton.isEnabled = hasChanged
     }
 
     @objc private func copyUserIdFromSettings() {

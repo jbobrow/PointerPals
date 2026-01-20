@@ -83,6 +83,9 @@ struct PointerPalsConfig {
 
     /// Show subscription count in menu bar
     static let showSubscriptionCount = true
+
+    /// Maximum username length (characters)
+    static let maxUsernameLength = 32
     
     // MARK: - Advanced
     
