@@ -19,7 +19,7 @@ struct PointerPalsApp: App {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private var statusItem: NSStatusItem!
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
@@ -28,6 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var demoCursorWindow: CursorWindow?
     private var demoTimer: Timer?
     private weak var demoButton: NSButton?  // Weak reference to demo button for updates
+    private var originalUsername: String = ""  // Store original username for comparison
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -331,12 +332,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         usernameField.stringValue = networkManager.currentUsername
         usernameField.placeholderString = "Enter your username"
         usernameField.font = NSFont.systemFont(ofSize: 13)
+        usernameField.delegate = self
+
+        // Store original username for comparison
+        originalUsername = networkManager.currentUsername
 
         let saveUsernameButton = NSButton(frame: NSRect(x: 280, y: yPos - 46, width: 80, height: 24))
         saveUsernameButton.title = "Save"
         saveUsernameButton.bezelStyle = .rounded
         saveUsernameButton.target = self
         saveUsernameButton.action = #selector(saveUsernameFromSettings(_:))
+        saveUsernameButton.isEnabled = false  // Disabled initially since username hasn't changed
+        saveUsernameButton.tag = 997  // Tag for finding the button later
 
         yPos -= 76
 
@@ -471,7 +478,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let newUsername = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if !newUsername.isEmpty {
                 networkManager.currentUsername = newUsername
+
+                // Update original username and disable save button after successful save
+                originalUsername = newUsername
+                sender.isEnabled = false
             }
+        }
+    }
+
+    // MARK: - NSTextFieldDelegate
+
+    func controlTextDidChange(_ obj: Notification) {
+        guard let textField = obj.object as? NSTextField,
+              textField.tag == 998 else { return }
+
+        // Find the save button and enable/disable based on whether username changed
+        if let window = textField.window,
+           let containerView = window.contentView?.subviews.first(where: { $0 is NSView }),
+           let saveButton = containerView.subviews.first(where: { $0.tag == 997 }) as? NSButton {
+
+            let currentText = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            let hasChanged = currentText != originalUsername && !currentText.isEmpty
+            saveButton.isEnabled = hasChanged
         }
     }
 
