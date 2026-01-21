@@ -59,6 +59,15 @@
             line-height: 1.07;
             letter-spacing: -0.005em;
             margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        h1 img {
+            width: 64px;
+            height: 64px;
         }
 
         .tagline {
@@ -104,27 +113,14 @@
 
         .cursor {
             position: absolute;
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             z-index: 10;
-        }
-
-        .cursor::before {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-left: 12px solid #000;
-            border-right: 12px solid transparent;
-            border-top: 12px solid transparent;
-            border-bottom: 12px solid transparent;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-        }
-
-        .cursor.cursor-white::before {
-            border-left-color: #fff;
+            background-image: url('assets/cursor@2x.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
         }
 
         footer {
@@ -158,7 +154,7 @@
     </nav>
 
     <div class="hero">
-        <h1>PointerPals</h1>
+        <h1><img src="PointerPals/Assets.xcassets/AppIcon.appiconset/PointerPals_Icon_64.png" alt="PointerPals Icon">PointerPals</h1>
         <p class="tagline">Delightful companions for your cursor.</p>
         <p class="description">
             Turn your everyday cursor into something magical. PointerPals brings playful,
@@ -171,7 +167,7 @@
         <img src="assets/splitscreen.png" alt="PointerPals on Mac" class="device-image" id="deviceImage">
         <div class="screen-container" id="screenContainer">
             <div class="cursor" id="cursor1"></div>
-            <div class="cursor cursor-white" id="cursor2"></div>
+            <div class="cursor" id="cursor2"></div>
         </div>
     </div>
 
@@ -181,19 +177,18 @@
     </footer>
 
     <script>
-        // Cursor animation logic
+        // Cursor animation logic with smooth non-linear motion
         const deviceContainer = document.getElementById('deviceContainer');
         const deviceImage = document.getElementById('deviceImage');
         const cursor1 = document.getElementById('cursor1');
         const cursor2 = document.getElementById('cursor2');
 
-        // Define screen area boundaries (approximate based on typical display proportions)
-        // These will be adjusted based on actual image dimensions
+        // Define screen area boundaries
         let screenBounds = {
-            left: 0.15,   // 15% from left
-            right: 0.85,  // 15% from right
-            top: 0.08,    // 8% from top
-            bottom: 0.92  // 8% from bottom
+            left: 0.15,
+            right: 0.85,
+            top: 0.08,
+            bottom: 0.92
         };
 
         // Animation paths for cursors
@@ -216,42 +211,96 @@
             ]
         };
 
-        let currentIndex1 = 0;
-        let currentIndex2 = 0;
+        // Easing function for smooth non-linear motion
+        function easeInOutCubic(t) {
+            return t < 0.5
+                ? 4 * t * t * t
+                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
 
-        function updateCursorPosition(cursor, path, index) {
+        // Animation state for each cursor
+        const animationState = {
+            cursor1: {
+                currentIndex: 0,
+                nextIndex: 1,
+                progress: 0,
+                duration: 2000
+            },
+            cursor2: {
+                currentIndex: 0,
+                nextIndex: 1,
+                progress: 0,
+                duration: 2000,
+                offset: 1000 // Offset to make cursors move at different times
+            }
+        };
+
+        function getScreenPosition(normalizedPoint) {
             const rect = deviceContainer.getBoundingClientRect();
-            const point = path[index];
-
-            // Calculate position within screen bounds
             const xRange = screenBounds.right - screenBounds.left;
             const yRange = screenBounds.bottom - screenBounds.top;
 
-            const x = (screenBounds.left + point.x * xRange) * rect.width;
-            const y = (screenBounds.top + point.y * yRange) * rect.height;
-
-            cursor.style.left = x + 'px';
-            cursor.style.top = y + 'px';
+            return {
+                x: (screenBounds.left + normalizedPoint.x * xRange) * rect.width,
+                y: (screenBounds.top + normalizedPoint.y * yRange) * rect.height
+            };
         }
 
-        function animateCursors() {
-            updateCursorPosition(cursor1, paths.cursor1, currentIndex1);
-            updateCursorPosition(cursor2, paths.cursor2, currentIndex2);
-
-            currentIndex1 = (currentIndex1 + 1) % paths.cursor1.length;
-            currentIndex2 = (currentIndex2 + 1) % paths.cursor2.length;
+        function lerp(start, end, t) {
+            return start + (end - start) * t;
         }
 
-        // Initialize cursor positions
-        animateCursors();
+        function updateCursor(cursor, path, state, deltaTime) {
+            state.progress += deltaTime;
 
-        // Animate cursors every 2 seconds
-        setInterval(animateCursors, 2000);
+            if (state.progress >= state.duration) {
+                state.progress = 0;
+                state.currentIndex = state.nextIndex;
+                state.nextIndex = (state.nextIndex + 1) % path.length;
+            }
+
+            const t = easeInOutCubic(state.progress / state.duration);
+
+            const currentPoint = path[state.currentIndex];
+            const nextPoint = path[state.nextIndex];
+
+            const interpolatedPoint = {
+                x: lerp(currentPoint.x, nextPoint.x, t),
+                y: lerp(currentPoint.y, nextPoint.y, t)
+            };
+
+            const screenPos = getScreenPosition(interpolatedPoint);
+            cursor.style.left = screenPos.x + 'px';
+            cursor.style.top = screenPos.y + 'px';
+        }
+
+        let lastTime = performance.now();
+        let offsetApplied = false;
+
+        function animate(currentTime) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            // Apply offset for cursor2 on first frame
+            if (!offsetApplied) {
+                animationState.cursor2.progress = -animationState.cursor2.offset;
+                offsetApplied = true;
+            }
+
+            updateCursor(cursor1, paths.cursor1, animationState.cursor1, deltaTime);
+            updateCursor(cursor2, paths.cursor2, animationState.cursor2, deltaTime);
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        requestAnimationFrame(animate);
 
         // Update cursor positions on window resize
         window.addEventListener('resize', () => {
-            updateCursorPosition(cursor1, paths.cursor1, currentIndex1);
-            updateCursorPosition(cursor2, paths.cursor2, currentIndex2);
+            // Force immediate update on resize
+            updateCursor(cursor1, paths.cursor1, animationState.cursor1, 0);
+            updateCursor(cursor2, paths.cursor2, animationState.cursor2, 0);
         });
     </script>
 </body>
