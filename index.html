@@ -5,41 +5,254 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PointerPals - Cursor Companions for Your Desktop</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #1d1d1f;
+            overflow-x: hidden;
         }
-        h1 {
-            color: #2c3e50;
-        }
+
         nav {
-            margin: 20px 0;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: saturate(180%) blur(20px);
+            z-index: 1000;
+            padding: 0 22px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
         }
+
         nav a {
-            margin-right: 20px;
-            color: #3498db;
+            color: #1d1d1f;
             text-decoration: none;
+            font-size: 12px;
+            margin: 0 15px;
+            transition: opacity 0.3s;
         }
+
         nav a:hover {
-            text-decoration: underline;
+            opacity: 0.6;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 80px 20px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 56px;
+            font-weight: 600;
+            line-height: 1.07;
+            letter-spacing: -0.005em;
+            margin-bottom: 12px;
+        }
+
+        .tagline {
+            font-size: 28px;
+            line-height: 1.14;
+            font-weight: 400;
+            letter-spacing: 0.007em;
+            color: #6e6e73;
+            margin-bottom: 20px;
+        }
+
+        .description {
+            font-size: 21px;
+            line-height: 1.38;
+            font-weight: 400;
+            letter-spacing: 0.011em;
+            color: #1d1d1f;
+            max-width: 800px;
+            margin: 20px auto 60px;
+        }
+
+        .device-container {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .device-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .screen-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .cursor {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            z-index: 10;
+        }
+
+        .cursor::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 12px solid #000;
+            border-right: 12px solid transparent;
+            border-top: 12px solid transparent;
+            border-bottom: 12px solid transparent;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        .cursor.cursor-white::before {
+            border-left-color: #fff;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6e6e73;
+            font-size: 12px;
+            border-top: 1px solid #d2d2d7;
+            margin-top: 80px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 40px;
+            }
+
+            .tagline {
+                font-size: 21px;
+            }
+
+            .description {
+                font-size: 17px;
+            }
         }
     </style>
 </head>
 <body>
     <nav>
-        <a href="index.html">Home</a>
-        <a href="privacy.html">Privacy Policy</a>
+        <a href="index.html">PointerPals</a>
+        <a href="privacy.html">Privacy</a>
     </nav>
 
-    <h1>PointerPals</h1>
-    <p>Cursor Companions for Your Desktop</p>
+    <div class="hero">
+        <h1>PointerPals</h1>
+        <p class="tagline">Delightful companions for your cursor.</p>
+        <p class="description">
+            Turn your everyday cursor into something magical. PointerPals brings playful,
+            animated characters that follow your pointer around your Mac desktop,
+            making every click an adventure.
+        </p>
+    </div>
 
-    <p>Welcome to PointerPals, where your cursor gets delightful company!</p>
+    <div class="device-container" id="deviceContainer">
+        <img src="splitscreen.png" alt="PointerPals on Mac" class="device-image" id="deviceImage">
+        <div class="screen-container" id="screenContainer">
+            <div class="cursor" id="cursor1"></div>
+            <div class="cursor cursor-white" id="cursor2"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>App Store® and Apple Watch® are registered trademarks of Apple Inc.</p>
+        <p style="margin-top: 10px;"><a href="privacy.html" style="color: #06c; text-decoration: none;">Privacy Policy</a></p>
+    </footer>
+
+    <script>
+        // Cursor animation logic
+        const deviceContainer = document.getElementById('deviceContainer');
+        const deviceImage = document.getElementById('deviceImage');
+        const cursor1 = document.getElementById('cursor1');
+        const cursor2 = document.getElementById('cursor2');
+
+        // Define screen area boundaries (approximate based on typical display proportions)
+        // These will be adjusted based on actual image dimensions
+        let screenBounds = {
+            left: 0.15,   // 15% from left
+            right: 0.85,  // 15% from right
+            top: 0.08,    // 8% from top
+            bottom: 0.92  // 8% from bottom
+        };
+
+        // Animation paths for cursors
+        const paths = {
+            cursor1: [
+                { x: 0.3, y: 0.3 },
+                { x: 0.5, y: 0.4 },
+                { x: 0.7, y: 0.3 },
+                { x: 0.6, y: 0.6 },
+                { x: 0.4, y: 0.7 },
+                { x: 0.3, y: 0.5 }
+            ],
+            cursor2: [
+                { x: 0.6, y: 0.4 },
+                { x: 0.4, y: 0.5 },
+                { x: 0.5, y: 0.7 },
+                { x: 0.7, y: 0.6 },
+                { x: 0.65, y: 0.35 },
+                { x: 0.55, y: 0.45 }
+            ]
+        };
+
+        let currentIndex1 = 0;
+        let currentIndex2 = 0;
+
+        function updateCursorPosition(cursor, path, index) {
+            const rect = deviceContainer.getBoundingClientRect();
+            const point = path[index];
+
+            // Calculate position within screen bounds
+            const xRange = screenBounds.right - screenBounds.left;
+            const yRange = screenBounds.bottom - screenBounds.top;
+
+            const x = (screenBounds.left + point.x * xRange) * rect.width;
+            const y = (screenBounds.top + point.y * yRange) * rect.height;
+
+            cursor.style.left = x + 'px';
+            cursor.style.top = y + 'px';
+        }
+
+        function animateCursors() {
+            updateCursorPosition(cursor1, paths.cursor1, currentIndex1);
+            updateCursorPosition(cursor2, paths.cursor2, currentIndex2);
+
+            currentIndex1 = (currentIndex1 + 1) % paths.cursor1.length;
+            currentIndex2 = (currentIndex2 + 1) % paths.cursor2.length;
+        }
+
+        // Initialize cursor positions
+        animateCursors();
+
+        // Animate cursors every 2 seconds
+        setInterval(animateCursors, 2000);
+
+        // Update cursor positions on window resize
+        window.addEventListener('resize', () => {
+            updateCursorPosition(cursor1, paths.cursor1, currentIndex1);
+            updateCursorPosition(cursor2, paths.cursor2, currentIndex2);
+        });
+    </script>
 </body>
 </html>
