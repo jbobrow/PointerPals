@@ -6,14 +6,39 @@ import AppKit
 struct PointerPalsConfig {
     
     // MARK: - Network Configuration
-    
-    /// WebSocket server URL
-    /// Change this to your deployed server URL for production
+
+    /// Default WebSocket server URL
+    /// This is the fallback if no custom server URL is set by the user
     /// Examples:
     /// - Local: "ws://localhost:8080"
     /// - LAN: "ws://192.168.1.100:8080"
     /// - Production: "wss://your-server.com"
-    static let serverURL = "wss://pointerpals-163455294213.us-east4.run.app"
+    static let defaultServerURL = "wss://pointerpals-163455294213.us-east4.run.app"
+
+    /// UserDefaults key for custom server URL
+    private static let serverURLKey = "PointerPals_ServerURL"
+
+    /// Get the server URL (custom if set, otherwise default)
+    static var serverURL: String {
+        if let customURL = UserDefaults.standard.string(forKey: serverURLKey), !customURL.isEmpty {
+            return customURL
+        }
+        return defaultServerURL
+    }
+
+    /// Set a custom server URL
+    static func setCustomServerURL(_ url: String?) {
+        if let url = url, !url.isEmpty {
+            UserDefaults.standard.set(url, forKey: serverURLKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: serverURLKey)
+        }
+    }
+
+    /// Get the custom server URL if set, nil otherwise
+    static var customServerURL: String? {
+        return UserDefaults.standard.string(forKey: serverURLKey)
+    }
     
     // MARK: - Cursor Publishing
     
@@ -107,12 +132,20 @@ struct PointerPalsConfig {
     static let clampCoordinates = true
     
     // MARK: - Helper Methods
-    
+
     /// Get publishing interval in seconds based on FPS
     static var publishingInterval: TimeInterval {
         return 1.0 / publishingFPS
     }
-    
+
+    /// Validate that a server URL is properly formatted for WebSocket
+    static func isValidServerURL(_ urlString: String) -> Bool {
+        guard !urlString.isEmpty else { return false }
+        guard let url = URL(string: urlString) else { return false }
+        guard let scheme = url.scheme?.lowercased() else { return false }
+        return scheme == "ws" || scheme == "wss"
+    }
+
     /// Validate configuration values
     static func validate() {
         assert(publishingFPS > 0, "Publishing FPS must be greater than 0")

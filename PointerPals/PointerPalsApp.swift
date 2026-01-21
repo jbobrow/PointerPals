@@ -29,6 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private var demoTimer: Timer?
     private weak var demoButton: NSButton?  // Weak reference to demo button for updates
     private var originalUsername: String = ""  // Store original username for comparison
+    private var advancedSectionExpanded: Bool = false  // Track advanced section expansion state
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -315,9 +316,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 270))
- 
-        var yPos: CGFloat = 270
+        // Height increased to accommodate Advanced section when expanded
+        let baseHeight: CGFloat = 270
+        let expandedHeight: CGFloat = 380
+        let containerHeight = advancedSectionExpanded ? expandedHeight : baseHeight
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
+
+        var yPos: CGFloat = containerHeight
         
         // Username section with inline save
         let usernameLabel = NSTextField(labelWithString: "Username:")
@@ -447,6 +452,73 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         sizeValueLabel.textColor = .secondaryLabelColor
         sizeValueLabel.tag = 999
 
+        yPos -= 30
+
+        // Advanced section with disclosure triangle
+        let advancedDisclosure = NSButton(frame: NSRect(x: 15, y: yPos, width: 150, height: 20))
+        advancedDisclosure.setButtonType(.pushOnPushOff)
+        advancedDisclosure.bezelStyle = .disclosure
+        advancedDisclosure.title = "Advanced"
+        advancedDisclosure.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        advancedDisclosure.state = advancedSectionExpanded ? .on : .off
+        advancedDisclosure.target = self
+        advancedDisclosure.action = #selector(toggleAdvancedSection(_:))
+        advancedDisclosure.tag = 996  // Tag for finding the button
+
+        // Advanced section content (only visible when expanded)
+        var advancedViews: [NSView] = []
+
+        if advancedSectionExpanded {
+            yPos -= 30
+
+            let serverURLLabel = NSTextField(labelWithString: "Server Address:")
+            serverURLLabel.frame = NSRect(x: 20, y: yPos, width: 110, height: 17)
+            serverURLLabel.isBezeled = false
+            serverURLLabel.drawsBackground = false
+            serverURLLabel.isEditable = false
+            serverURLLabel.isSelectable = false
+            serverURLLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+            advancedViews.append(serverURLLabel)
+
+            yPos -= 26
+
+            let serverURLField = NSTextField(frame: NSRect(x: 20, y: yPos, width: 340, height: 24))
+            serverURLField.stringValue = PointerPalsConfig.customServerURL ?? PointerPalsConfig.defaultServerURL
+            serverURLField.placeholderString = PointerPalsConfig.defaultServerURL
+            serverURLField.font = NSFont.systemFont(ofSize: 12)
+            serverURLField.tag = 995  // Tag for finding the field
+            advancedViews.append(serverURLField)
+
+            yPos -= 34
+
+            let saveServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 160, height: 28))
+            saveServerButton.title = "Save Server Address"
+            saveServerButton.bezelStyle = .rounded
+            saveServerButton.target = self
+            saveServerButton.action = #selector(saveServerURL(_:))
+            advancedViews.append(saveServerButton)
+
+            let resetServerButton = NSButton(frame: NSRect(x: 190, y: yPos, width: 170, height: 28))
+            resetServerButton.title = "Reset to Default"
+            resetServerButton.bezelStyle = .rounded
+            resetServerButton.target = self
+            resetServerButton.action = #selector(resetServerURL(_:))
+            advancedViews.append(resetServerButton)
+
+            yPos -= 20
+
+            let serverInfoLabel = NSTextField(labelWithString: "Requires app restart to take effect")
+            serverInfoLabel.frame = NSRect(x: 20, y: yPos, width: 340, height: 14)
+            serverInfoLabel.isBezeled = false
+            serverInfoLabel.drawsBackground = false
+            serverInfoLabel.isEditable = false
+            serverInfoLabel.isSelectable = false
+            serverInfoLabel.font = NSFont.systemFont(ofSize: 11)
+            serverInfoLabel.textColor = .secondaryLabelColor
+            serverInfoLabel.alignment = .left
+            advancedViews.append(serverInfoLabel)
+        }
+
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
         containerView.addSubview(saveUsernameButton)
@@ -460,6 +532,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         containerView.addSubview(cursorSizeSlider)
         containerView.addSubview(sizeValueLabel)
         containerView.addSubview(demoCursorButton)
+        containerView.addSubview(advancedDisclosure)
+        for view in advancedViews {
+            containerView.addSubview(view)
+        }
 
         alert.accessoryView = containerView
         alert.window.initialFirstResponder = usernameField
@@ -544,6 +620,65 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         // Update original username and disable save button after successful save
         originalUsername = newUsername
         sender.isEnabled = false
+    }
+
+    @objc private func toggleAdvancedSection(_ sender: NSButton) {
+        advancedSectionExpanded.toggle()
+        // Close the current dialog and reopen it with the new state
+        if let window = sender.window {
+            window.close()
+            showSettings()
+        }
+    }
+
+    @objc private func saveServerURL(_ sender: NSButton) {
+        guard let containerView = sender.superview,
+              let serverURLField = containerView.subviews.first(where: { $0.tag == 995 }) as? NSTextField else {
+            return
+        }
+
+        let urlString = serverURLField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Validate URL format
+        guard PointerPalsConfig.isValidServerURL(urlString) else {
+            let errorAlert = NSAlert()
+            errorAlert.messageText = "Invalid Server URL"
+            errorAlert.informativeText = "Please enter a valid WebSocket URL (ws:// or wss://)"
+            errorAlert.alertStyle = .warning
+            errorAlert.addButton(withTitle: "OK")
+            errorAlert.runModal()
+            return
+        }
+
+        // Save the custom URL
+        PointerPalsConfig.setCustomServerURL(urlString)
+
+        // Show success message
+        let successAlert = NSAlert()
+        successAlert.messageText = "Server Address Saved"
+        successAlert.informativeText = "Please restart the app for the change to take effect."
+        successAlert.alertStyle = .informational
+        successAlert.addButton(withTitle: "OK")
+        successAlert.runModal()
+    }
+
+    @objc private func resetServerURL(_ sender: NSButton) {
+        guard let containerView = sender.superview,
+              let serverURLField = containerView.subviews.first(where: { $0.tag == 995 }) as? NSTextField else {
+            return
+        }
+
+        // Reset to default
+        PointerPalsConfig.setCustomServerURL(nil)
+        serverURLField.stringValue = PointerPalsConfig.defaultServerURL
+
+        // Show success message
+        let successAlert = NSAlert()
+        successAlert.messageText = "Server Address Reset"
+        successAlert.informativeText = "Server address has been reset to default. Please restart the app for the change to take effect."
+        successAlert.alertStyle = .informational
+        successAlert.addButton(withTitle: "OK")
+        successAlert.runModal()
     }
 
     // MARK: - NSTextFieldDelegate
