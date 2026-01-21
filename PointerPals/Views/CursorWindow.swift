@@ -6,6 +6,8 @@ class CursorWindow: NSWindow {
     private let usernameLabel: NSTextField
     private let userId: String
     private var currentUsername: String?
+    private let scaledCursorSize: CGSize
+    private let labelHeight: CGFloat = 11
 
     init(userId: String, cursorScale: CGFloat = PointerPalsConfig.defaultCursorScale) {
         self.userId = userId
@@ -15,7 +17,7 @@ class CursorWindow: NSWindow {
         let naturalCursorSize = cursorImage.size
 
         // Scale cursor to desired size (0.5 = half size, 0.75 = 75% size, etc.)
-        let scaledCursorSize = CGSize(
+        self.scaledCursorSize = CGSize(
             width: naturalCursorSize.width * cursorScale,
             height: naturalCursorSize.height * cursorScale
         )
@@ -35,9 +37,8 @@ class CursorWindow: NSWindow {
         usernameLabel.layer?.cornerRadius = 4
         usernameLabel.layer?.masksToBounds = true
 
-        // Calculate window size to accommodate cursor and label
-        let labelHeight: CGFloat = 11
-        let windowWidth = max(scaledCursorSize.width, 100)
+        // Calculate initial window size (will be resized when username is set)
+        let windowWidth = scaledCursorSize.width
         let windowHeight = scaledCursorSize.height + labelHeight
         let windowSize = CGSize(width: windowWidth, height: windowHeight)
 
@@ -97,10 +98,30 @@ class CursorWindow: NSWindow {
                 .strokeWidth: -3.0  // Negative for fill + stroke, positive for stroke only
             ]
 
-            usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
+            let attributedString = NSAttributedString(string: username, attributes: attributes)
+            usernameLabel.attributedStringValue = attributedString
             usernameLabel.isHidden = false
+
+            // Calculate the width needed for the username text
+            let textSize = attributedString.size()
+            let textWidth = ceil(textSize.width) + 16  // Add padding for readability
+
+            // Window width should be at least as wide as the cursor or the text
+            let windowWidth = max(scaledCursorSize.width, textWidth)
+
+            // Resize window and reposition elements
+            let newWindowSize = CGSize(width: windowWidth, height: scaledCursorSize.height + labelHeight)
+            self.setContentSize(newWindowSize)
+
+            // Update label frame to match new window width
+            usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: labelHeight)
         } else {
             usernameLabel.isHidden = true
+
+            // When no username, window can be just the cursor width
+            let windowWidth = scaledCursorSize.width
+            let newWindowSize = CGSize(width: windowWidth, height: scaledCursorSize.height + labelHeight)
+            self.setContentSize(newWindowSize)
         }
     }
 
@@ -116,12 +137,31 @@ class CursorWindow: NSWindow {
                     .strokeWidth: -3.0  // Negative for fill + stroke
                 ]
 
-                usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
+                let attributedString = NSAttributedString(string: username, attributes: attributes)
+                usernameLabel.attributedStringValue = attributedString
                 usernameLabel.isHidden = false
+
+                // Calculate the width needed for the username text
+                let textSize = attributedString.size()
+                let textWidth = ceil(textSize.width) + 16  // Add padding for readability
+
+                // Window width should be at least as wide as the cursor or the text
+                let windowWidth = max(scaledCursorSize.width, textWidth)
+
+                // Resize window and reposition elements
+                let newWindowSize = CGSize(width: windowWidth, height: scaledCursorSize.height + labelHeight)
+                self.setContentSize(newWindowSize)
+
+                // Update label frame to match new window width
+                usernameLabel.frame = NSRect(x: 0, y: 0, width: windowWidth, height: labelHeight)
             }
         } else {
-            // Always hide username
+            // Always hide username and resize to just cursor width
             usernameLabel.isHidden = true
+
+            let windowWidth = scaledCursorSize.width
+            let newWindowSize = CGSize(width: windowWidth, height: scaledCursorSize.height + labelHeight)
+            self.setContentSize(newWindowSize)
         }
     }
 
@@ -243,7 +283,8 @@ struct CursorWindowPreview: NSViewRepresentable {
         usernameLabel.attributedStringValue = NSAttributedString(string: username, attributes: attributes)
 
         let labelHeight: CGFloat = 18
-        let windowWidth = max(scaledCursorSize.width, 100)
+        // Ensure window is wide enough for max username length (32 chars * ~7.5 pts/char ≈ 240)
+        let windowWidth = max(scaledCursorSize.width, 250)
 
         // Position cursor above the username label
         cursorImageView.frame.origin = CGPoint(x: 0, y: labelHeight)
