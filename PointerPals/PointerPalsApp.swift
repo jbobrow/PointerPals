@@ -317,8 +317,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         // Create a container view with proper dimensions
         // Height increased to accommodate Advanced section when expanded
-        let baseHeight: CGFloat = 270
-        let expandedHeight: CGFloat = 380
+        let baseHeight: CGFloat = 320
+        let expandedHeight: CGFloat = 400
         let containerHeight = advancedSectionExpanded ? expandedHeight : baseHeight
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
 
@@ -454,70 +454,77 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 30
 
-        // Advanced section with disclosure triangle
-        let advancedDisclosure = NSButton(frame: NSRect(x: 15, y: yPos, width: 150, height: 20))
-        advancedDisclosure.setButtonType(.pushOnPushOff)
+        // Advanced section with disclosure triangle and label
+        let advancedDisclosure = NSButton(frame: NSRect(x: 15, y: yPos - 2, width: 20, height: 20))
+        advancedDisclosure.setButtonType(.onOff)
         advancedDisclosure.bezelStyle = .disclosure
-        advancedDisclosure.title = "Advanced"
-        advancedDisclosure.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        advancedDisclosure.title = ""
         advancedDisclosure.state = advancedSectionExpanded ? .on : .off
         advancedDisclosure.target = self
         advancedDisclosure.action = #selector(toggleAdvancedSection(_:))
         advancedDisclosure.tag = 996  // Tag for finding the button
 
-        // Advanced section content (only visible when expanded)
-        var advancedViews: [NSView] = []
+        let advancedLabel = NSTextField(labelWithString: "Advanced")
+        advancedLabel.frame = NSRect(x: 40, y: yPos, width: 100, height: 17)
+        advancedLabel.isBezeled = false
+        advancedLabel.drawsBackground = false
+        advancedLabel.isEditable = false
+        advancedLabel.isSelectable = false
+        advancedLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
 
-        if advancedSectionExpanded {
-            yPos -= 30
+        // Advanced section content (always created, but hidden when collapsed)
+        yPos -= 30
 
-            let serverURLLabel = NSTextField(labelWithString: "Server Address:")
-            serverURLLabel.frame = NSRect(x: 20, y: yPos, width: 110, height: 17)
-            serverURLLabel.isBezeled = false
-            serverURLLabel.drawsBackground = false
-            serverURLLabel.isEditable = false
-            serverURLLabel.isSelectable = false
-            serverURLLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-            advancedViews.append(serverURLLabel)
+        let serverURLLabel = NSTextField(labelWithString: "Server Address:")
+        serverURLLabel.frame = NSRect(x: 20, y: yPos, width: 110, height: 17)
+        serverURLLabel.isBezeled = false
+        serverURLLabel.drawsBackground = false
+        serverURLLabel.isEditable = false
+        serverURLLabel.isSelectable = false
+        serverURLLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        serverURLLabel.tag = 990  // Tag for advanced content
+        serverURLLabel.isHidden = !advancedSectionExpanded
 
-            yPos -= 26
+        yPos -= 26
 
-            let serverURLField = NSTextField(frame: NSRect(x: 20, y: yPos, width: 340, height: 24))
-            serverURLField.stringValue = PointerPalsConfig.customServerURL ?? PointerPalsConfig.defaultServerURL
-            serverURLField.placeholderString = PointerPalsConfig.defaultServerURL
-            serverURLField.font = NSFont.systemFont(ofSize: 12)
-            serverURLField.tag = 995  // Tag for finding the field
-            advancedViews.append(serverURLField)
+        let serverURLField = NSTextField(frame: NSRect(x: 20, y: yPos, width: 340, height: 24))
+        serverURLField.stringValue = PointerPalsConfig.customServerURL ?? PointerPalsConfig.defaultServerURL
+        serverURLField.placeholderString = PointerPalsConfig.defaultServerURL
+        serverURLField.font = NSFont.systemFont(ofSize: 12)
+        serverURLField.tag = 995  // Tag for finding the field
+        serverURLField.isHidden = !advancedSectionExpanded
 
-            yPos -= 34
+        yPos -= 34
 
-            let saveServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 160, height: 28))
-            saveServerButton.title = "Save Server Address"
-            saveServerButton.bezelStyle = .rounded
-            saveServerButton.target = self
-            saveServerButton.action = #selector(saveServerURL(_:))
-            advancedViews.append(saveServerButton)
+        let saveServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 160, height: 28))
+        saveServerButton.title = "Save Server Address"
+        saveServerButton.bezelStyle = .rounded
+        saveServerButton.target = self
+        saveServerButton.action = #selector(saveServerURL(_:))
+        saveServerButton.tag = 991  // Tag for advanced content
+        saveServerButton.isHidden = !advancedSectionExpanded
 
-            let resetServerButton = NSButton(frame: NSRect(x: 190, y: yPos, width: 170, height: 28))
-            resetServerButton.title = "Reset to Default"
-            resetServerButton.bezelStyle = .rounded
-            resetServerButton.target = self
-            resetServerButton.action = #selector(resetServerURL(_:))
-            advancedViews.append(resetServerButton)
+        let resetServerButton = NSButton(frame: NSRect(x: 190, y: yPos, width: 170, height: 28))
+        resetServerButton.title = "Reset to Default"
+        resetServerButton.bezelStyle = .rounded
+        resetServerButton.target = self
+        resetServerButton.action = #selector(resetServerURL(_:))
+        resetServerButton.tag = 992  // Tag for advanced content
+        resetServerButton.isHidden = !advancedSectionExpanded
 
-            yPos -= 20
+        yPos -= 20
 
-            let serverInfoLabel = NSTextField(labelWithString: "Requires app restart to take effect")
-            serverInfoLabel.frame = NSRect(x: 20, y: yPos, width: 340, height: 14)
-            serverInfoLabel.isBezeled = false
-            serverInfoLabel.drawsBackground = false
-            serverInfoLabel.isEditable = false
-            serverInfoLabel.isSelectable = false
-            serverInfoLabel.font = NSFont.systemFont(ofSize: 11)
-            serverInfoLabel.textColor = .secondaryLabelColor
-            serverInfoLabel.alignment = .left
-            advancedViews.append(serverInfoLabel)
-        }
+        let serverInfoLabel = NSTextField(labelWithString: "Requires app restart to take effect")
+        serverInfoLabel.frame = NSRect(x: 20, y: yPos, width: 340, height: 14)
+        serverInfoLabel.isBezeled = false
+        serverInfoLabel.drawsBackground = false
+        serverInfoLabel.isEditable = false
+        serverInfoLabel.isSelectable = false
+        serverInfoLabel.font = NSFont.systemFont(ofSize: 11)
+        serverInfoLabel.textColor = .secondaryLabelColor
+        serverInfoLabel.alignment = .left
+        serverInfoLabel.tag = 993  // Tag for advanced content
+        serverInfoLabel.isHidden = !advancedSectionExpanded
 
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
@@ -533,9 +540,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         containerView.addSubview(sizeValueLabel)
         containerView.addSubview(demoCursorButton)
         containerView.addSubview(advancedDisclosure)
-        for view in advancedViews {
-            containerView.addSubview(view)
-        }
+        containerView.addSubview(advancedLabel)
+        containerView.addSubview(serverURLLabel)
+        containerView.addSubview(serverURLField)
+        containerView.addSubview(saveServerButton)
+        containerView.addSubview(resetServerButton)
+        containerView.addSubview(serverInfoLabel)
 
         alert.accessoryView = containerView
         alert.window.initialFirstResponder = usernameField
@@ -624,11 +634,44 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
     @objc private func toggleAdvancedSection(_ sender: NSButton) {
         advancedSectionExpanded.toggle()
-        // Close the current dialog and reopen it with the new state
-        if let window = sender.window {
-            window.close()
-            showSettings()
+
+        // Find the container view and all advanced content views
+        guard let containerView = sender.superview,
+              let window = sender.window else {
+            return
         }
+
+        // Find all advanced content views by their tags (990-993, 995)
+        let advancedTags = [990, 991, 992, 993, 995]
+        let advancedViews = containerView.subviews.filter { advancedTags.contains($0.tag) }
+
+        // Calculate new heights
+        let baseHeight: CGFloat = 320
+        let expandedHeight: CGFloat = 400
+        let newContainerHeight = advancedSectionExpanded ? expandedHeight : baseHeight
+
+        // Animate the changes
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+            // Show/hide advanced views
+            for view in advancedViews {
+                view.animator().isHidden = !advancedSectionExpanded
+            }
+
+            // Resize container view
+            var containerFrame = containerView.frame
+            let heightDiff = newContainerHeight - containerFrame.height
+            containerFrame.size.height = newContainerHeight
+            containerView.animator().frame = containerFrame
+
+            // Resize window
+            var windowFrame = window.frame
+            windowFrame.size.height += heightDiff
+            windowFrame.origin.y -= heightDiff  // Keep top-left corner in place
+            window.animator().setFrame(windowFrame, display: true)
+        }, completionHandler: nil)
     }
 
     @objc private func saveServerURL(_ sender: NSButton) {
