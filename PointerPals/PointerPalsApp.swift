@@ -316,8 +316,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        // Always use expanded height to avoid window resizing issues
-        let containerHeight: CGFloat = 400
+        let baseHeight: CGFloat = 320
+        let expandedHeight: CGFloat = 400
+        let containerHeight = advancedSectionExpanded ? expandedHeight : baseHeight
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
 
         var yPos: CGFloat = containerHeight
@@ -639,7 +640,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         advancedSectionExpanded.toggle()
 
         // Find the container view and all advanced content views
-        guard let containerView = sender.superview else {
+        guard let containerView = sender.superview,
+              let window = sender.window else {
             return
         }
 
@@ -647,15 +649,67 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         let advancedTags = [990, 991, 992, 993, 995]
         let advancedViews = containerView.subviews.filter { advancedTags.contains($0.tag) }
 
-        // Animate showing/hiding the advanced views
+        // Find all non-advanced views that need to be shifted to compensate for window resize
+        let nonAdvancedViews = containerView.subviews.filter { !advancedTags.contains($0.tag) }
+
+        // Calculate height change
+        let baseHeight: CGFloat = 320
+        let expandedHeight: CGFloat = 400
+        let heightDiff = expandedHeight - baseHeight
+
+        // Animate the changes
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
+            context.duration = 0.25
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 
-            // Show/hide advanced views with fade animation
-            for view in advancedViews {
-                view.animator().isHidden = !advancedSectionExpanded
-                view.animator().alphaValue = advancedSectionExpanded ? 1.0 : 0.0
+            if advancedSectionExpanded {
+                // Expanding: shift all non-advanced views UP by heightDiff to compensate for window growing downward
+                for view in nonAdvancedViews {
+                    var frame = view.frame
+                    frame.origin.y += heightDiff
+                    view.animator().frame = frame
+                }
+
+                // Show advanced views with fade
+                for view in advancedViews {
+                    view.animator().isHidden = false
+                    view.animator().alphaValue = 1.0
+                }
+
+                // Resize container
+                var containerFrame = containerView.frame
+                containerFrame.size.height = expandedHeight
+                containerView.animator().frame = containerFrame
+
+                // Resize window (grows downward)
+                var windowFrame = window.frame
+                windowFrame.size.height += heightDiff
+                windowFrame.origin.y -= heightDiff
+                window.animator().setFrame(windowFrame, display: true)
+            } else {
+                // Collapsing: hide advanced views first
+                for view in advancedViews {
+                    view.animator().isHidden = true
+                    view.animator().alphaValue = 0.0
+                }
+
+                // Shift all non-advanced views DOWN by heightDiff
+                for view in nonAdvancedViews {
+                    var frame = view.frame
+                    frame.origin.y -= heightDiff
+                    view.animator().frame = frame
+                }
+
+                // Resize container
+                var containerFrame = containerView.frame
+                containerFrame.size.height = baseHeight
+                containerView.animator().frame = containerFrame
+
+                // Resize window (shrinks upward)
+                var windowFrame = window.frame
+                windowFrame.size.height -= heightDiff
+                windowFrame.origin.y += heightDiff
+                window.animator().setFrame(windowFrame, display: true)
             }
         }, completionHandler: nil)
     }
