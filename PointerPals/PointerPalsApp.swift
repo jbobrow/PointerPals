@@ -316,10 +316,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        // Height increased to accommodate Advanced section when expanded
-        let baseHeight: CGFloat = 320
-        let expandedHeight: CGFloat = 400
-        let containerHeight = advancedSectionExpanded ? expandedHeight : baseHeight
+        // Always use expanded height to avoid window resizing issues
+        let containerHeight: CGFloat = 400
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
 
         var yPos: CGFloat = containerHeight
@@ -484,6 +482,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         serverURLLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
         serverURLLabel.tag = 990  // Tag for advanced content
         serverURLLabel.isHidden = !advancedSectionExpanded
+        serverURLLabel.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
 
         yPos -= 26
 
@@ -493,6 +492,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         serverURLField.font = NSFont.systemFont(ofSize: 12)
         serverURLField.tag = 995  // Tag for finding the field
         serverURLField.isHidden = !advancedSectionExpanded
+        serverURLField.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
 
         yPos -= 34
 
@@ -503,6 +503,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         saveServerButton.action = #selector(saveServerURL(_:))
         saveServerButton.tag = 991  // Tag for advanced content
         saveServerButton.isHidden = !advancedSectionExpanded
+        saveServerButton.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
 
         let resetServerButton = NSButton(frame: NSRect(x: 190, y: yPos, width: 170, height: 28))
         resetServerButton.title = "Reset to Default"
@@ -511,6 +512,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         resetServerButton.action = #selector(resetServerURL(_:))
         resetServerButton.tag = 992  // Tag for advanced content
         resetServerButton.isHidden = !advancedSectionExpanded
+        resetServerButton.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
 
         yPos -= 20
 
@@ -525,6 +527,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         serverInfoLabel.alignment = .left
         serverInfoLabel.tag = 993  // Tag for advanced content
         serverInfoLabel.isHidden = !advancedSectionExpanded
+        serverInfoLabel.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
 
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
@@ -636,8 +639,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         advancedSectionExpanded.toggle()
 
         // Find the container view and all advanced content views
-        guard let containerView = sender.superview,
-              let window = sender.window else {
+        guard let containerView = sender.superview else {
             return
         }
 
@@ -645,32 +647,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         let advancedTags = [990, 991, 992, 993, 995]
         let advancedViews = containerView.subviews.filter { advancedTags.contains($0.tag) }
 
-        // Calculate new heights
-        let baseHeight: CGFloat = 320
-        let expandedHeight: CGFloat = 400
-        let newContainerHeight = advancedSectionExpanded ? expandedHeight : baseHeight
-
-        // Animate the changes
+        // Animate showing/hiding the advanced views
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.25
+            context.duration = 0.2
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 
-            // Show/hide advanced views
+            // Show/hide advanced views with fade animation
             for view in advancedViews {
                 view.animator().isHidden = !advancedSectionExpanded
+                view.animator().alphaValue = advancedSectionExpanded ? 1.0 : 0.0
             }
-
-            // Resize container view
-            var containerFrame = containerView.frame
-            let heightDiff = newContainerHeight - containerFrame.height
-            containerFrame.size.height = newContainerHeight
-            containerView.animator().frame = containerFrame
-
-            // Resize window
-            var windowFrame = window.frame
-            windowFrame.size.height += heightDiff
-            windowFrame.origin.y -= heightDiff  // Keep top-left corner in place
-            window.animator().setFrame(windowFrame, display: true)
         }, completionHandler: nil)
     }
 
