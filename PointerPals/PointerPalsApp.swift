@@ -315,9 +315,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 270))
- 
-        var yPos: CGFloat = 270
+        let containerHeight: CGFloat = 300
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
+
+        var yPos: CGFloat = containerHeight
         
         // Username section with inline save
         let usernameLabel = NSTextField(labelWithString: "Username:")
@@ -447,6 +448,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         sizeValueLabel.textColor = .secondaryLabelColor
         sizeValueLabel.tag = 999
 
+        yPos -= 36
+
+        // Custom Server button
+        let customServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 28))
+        customServerButton.title = "Configure Server..."
+        customServerButton.bezelStyle = .rounded
+        customServerButton.target = self
+        customServerButton.action = #selector(showServerSettings)
+
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
         containerView.addSubview(saveUsernameButton)
@@ -460,6 +470,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         containerView.addSubview(cursorSizeSlider)
         containerView.addSubview(sizeValueLabel)
         containerView.addSubview(demoCursorButton)
+        containerView.addSubview(customServerButton)
 
         alert.accessoryView = containerView
         alert.window.initialFirstResponder = usernameField
@@ -545,6 +556,107 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         originalUsername = newUsername
         sender.isEnabled = false
     }
+
+    @objc private func showServerSettings() {
+        let alert = NSAlert()
+        alert.messageText = "Configure Custom Server"
+        alert.informativeText = ""
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+
+        // Create container view with better spacing
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 110))
+        var yPos: CGFloat = 110
+
+        // Server Address label
+        let serverURLLabel = NSTextField(labelWithString: "Server Address:")
+        serverURLLabel.frame = NSRect(x: 20, y: yPos - 20, width: 110, height: 17)
+        serverURLLabel.isBezeled = false
+        serverURLLabel.drawsBackground = false
+        serverURLLabel.isEditable = false
+        serverURLLabel.isSelectable = false
+        serverURLLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+
+        yPos -= 46
+
+        // Server Address field
+        let serverURLField = NSTextField(frame: NSRect(x: 20, y: yPos, width: 340, height: 24))
+        serverURLField.stringValue = PointerPalsConfig.customServerURL ?? PointerPalsConfig.defaultServerURL
+        serverURLField.placeholderString = PointerPalsConfig.defaultServerURL
+        serverURLField.font = NSFont.systemFont(ofSize: 13)
+        serverURLField.tag = 995
+
+        yPos -= 36
+
+        // Reset button (left-aligned with field)
+        let resetButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 160, height: 28))
+        resetButton.title = "Reset to Default"
+        resetButton.bezelStyle = .rounded
+        resetButton.target = self
+        resetButton.action = #selector(resetServerURLInModal(_:))
+
+        yPos -= 8
+
+        // Info label (positioned below reset button with minimal spacing)
+        let infoLabel = NSTextField(labelWithString: "Requires app restart to take effect")
+        infoLabel.frame = NSRect(x: 20, y: yPos - 10, width: 340, height: 14)
+        infoLabel.isBezeled = false
+        infoLabel.drawsBackground = false
+        infoLabel.isEditable = false
+        infoLabel.isSelectable = false
+        infoLabel.font = NSFont.systemFont(ofSize: 11)
+        infoLabel.textColor = .secondaryLabelColor
+        infoLabel.alignment = .left
+
+        containerView.addSubview(serverURLLabel)
+        containerView.addSubview(serverURLField)
+        containerView.addSubview(resetButton)
+        containerView.addSubview(infoLabel)
+
+        alert.accessoryView = containerView
+        alert.window.initialFirstResponder = serverURLField
+
+        let response = alert.runModal()
+
+        if response == .alertFirstButtonReturn {
+            // Save button clicked
+            let urlString = serverURLField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Validate URL format
+            guard PointerPalsConfig.isValidServerURL(urlString) else {
+                let errorAlert = NSAlert()
+                errorAlert.messageText = "Invalid Server URL"
+                errorAlert.informativeText = "Please enter a valid WebSocket URL (ws:// or wss://)"
+                errorAlert.alertStyle = .warning
+                errorAlert.addButton(withTitle: "OK")
+                errorAlert.runModal()
+                return
+            }
+
+            // Save the custom URL
+            PointerPalsConfig.setCustomServerURL(urlString)
+
+            // Show success message
+            let successAlert = NSAlert()
+            successAlert.messageText = "Server Address Saved"
+            successAlert.informativeText = "Please restart the app for the change to take effect."
+            successAlert.alertStyle = .informational
+            successAlert.addButton(withTitle: "OK")
+            successAlert.runModal()
+        }
+        // If Cancel was clicked, do nothing
+    }
+
+    @objc private func resetServerURLInModal(_ sender: NSButton) {
+        guard let containerView = sender.superview,
+              let serverURLField = containerView.subviews.first(where: { $0.tag == 995 }) as? NSTextField else {
+            return
+        }
+
+        // Reset field to default
+        serverURLField.stringValue = PointerPalsConfig.defaultServerURL
+    }
+
 
     // MARK: - NSTextFieldDelegate
 
