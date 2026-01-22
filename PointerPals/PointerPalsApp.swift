@@ -29,7 +29,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private var demoTimer: Timer?
     private weak var demoButton: NSButton?  // Weak reference to demo button for updates
     private var originalUsername: String = ""  // Store original username for comparison
-    private var advancedSectionExpanded: Bool = false  // Track advanced section expansion state
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -316,9 +315,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let baseHeight: CGFloat = 320
-        let expandedHeight: CGFloat = 400
-        let containerHeight = advancedSectionExpanded ? expandedHeight : baseHeight
+        let containerHeight: CGFloat = 280
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
 
         var yPos: CGFloat = containerHeight
@@ -451,84 +448,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         sizeValueLabel.textColor = .secondaryLabelColor
         sizeValueLabel.tag = 999
 
-        yPos -= 30
+        yPos -= 40
 
-        // Advanced section with disclosure triangle and label
-        let advancedDisclosure = NSButton(frame: NSRect(x: 15, y: yPos - 2, width: 20, height: 20))
-        advancedDisclosure.setButtonType(.onOff)
-        advancedDisclosure.bezelStyle = .disclosure
-        advancedDisclosure.title = ""
-        advancedDisclosure.state = advancedSectionExpanded ? .on : .off
-        advancedDisclosure.target = self
-        advancedDisclosure.action = #selector(toggleAdvancedSection(_:))
-        advancedDisclosure.tag = 996  // Tag for finding the button
-
-        let advancedLabel = NSTextField(labelWithString: "Advanced")
-        advancedLabel.frame = NSRect(x: 40, y: yPos, width: 100, height: 17)
-        advancedLabel.isBezeled = false
-        advancedLabel.drawsBackground = false
-        advancedLabel.isEditable = false
-        advancedLabel.isSelectable = false
-        advancedLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-
-        // Advanced section content (always created, but hidden when collapsed)
-        yPos -= 30
-
-        let serverURLLabel = NSTextField(labelWithString: "Server Address:")
-        serverURLLabel.frame = NSRect(x: 20, y: yPos, width: 110, height: 17)
-        serverURLLabel.isBezeled = false
-        serverURLLabel.drawsBackground = false
-        serverURLLabel.isEditable = false
-        serverURLLabel.isSelectable = false
-        serverURLLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-        serverURLLabel.tag = 990  // Tag for advanced content
-        serverURLLabel.isHidden = !advancedSectionExpanded
-        serverURLLabel.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
-
-        yPos -= 26
-
-        let serverURLField = NSTextField(frame: NSRect(x: 20, y: yPos, width: 340, height: 24))
-        serverURLField.stringValue = PointerPalsConfig.customServerURL ?? PointerPalsConfig.defaultServerURL
-        serverURLField.placeholderString = PointerPalsConfig.defaultServerURL
-        serverURLField.font = NSFont.systemFont(ofSize: 12)
-        serverURLField.tag = 995  // Tag for finding the field
-        serverURLField.isHidden = !advancedSectionExpanded
-        serverURLField.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
-
-        yPos -= 34
-
-        let saveServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 160, height: 28))
-        saveServerButton.title = "Save Server Address"
-        saveServerButton.bezelStyle = .rounded
-        saveServerButton.target = self
-        saveServerButton.action = #selector(saveServerURL(_:))
-        saveServerButton.tag = 991  // Tag for advanced content
-        saveServerButton.isHidden = !advancedSectionExpanded
-        saveServerButton.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
-
-        let resetServerButton = NSButton(frame: NSRect(x: 190, y: yPos, width: 170, height: 28))
-        resetServerButton.title = "Reset to Default"
-        resetServerButton.bezelStyle = .rounded
-        resetServerButton.target = self
-        resetServerButton.action = #selector(resetServerURL(_:))
-        resetServerButton.tag = 992  // Tag for advanced content
-        resetServerButton.isHidden = !advancedSectionExpanded
-        resetServerButton.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
-
-        yPos -= 20
-
-        let serverInfoLabel = NSTextField(labelWithString: "Requires app restart to take effect")
-        serverInfoLabel.frame = NSRect(x: 20, y: yPos, width: 340, height: 14)
-        serverInfoLabel.isBezeled = false
-        serverInfoLabel.drawsBackground = false
-        serverInfoLabel.isEditable = false
-        serverInfoLabel.isSelectable = false
-        serverInfoLabel.font = NSFont.systemFont(ofSize: 11)
-        serverInfoLabel.textColor = .secondaryLabelColor
-        serverInfoLabel.alignment = .left
-        serverInfoLabel.tag = 993  // Tag for advanced content
-        serverInfoLabel.isHidden = !advancedSectionExpanded
-        serverInfoLabel.alphaValue = advancedSectionExpanded ? 1.0 : 0.0
+        // Custom Server button
+        let customServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
+        customServerButton.title = "Custom Server..."
+        customServerButton.bezelStyle = .rounded
+        customServerButton.target = self
+        customServerButton.action = #selector(showServerSettings)
 
         containerView.addSubview(usernameLabel)
         containerView.addSubview(usernameField)
@@ -543,13 +470,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         containerView.addSubview(cursorSizeSlider)
         containerView.addSubview(sizeValueLabel)
         containerView.addSubview(demoCursorButton)
-        containerView.addSubview(advancedDisclosure)
-        containerView.addSubview(advancedLabel)
-        containerView.addSubview(serverURLLabel)
-        containerView.addSubview(serverURLField)
-        containerView.addSubview(saveServerButton)
-        containerView.addSubview(resetServerButton)
-        containerView.addSubview(serverInfoLabel)
+        containerView.addSubview(customServerButton)
 
         alert.accessoryView = containerView
         alert.window.initialFirstResponder = usernameField
@@ -636,133 +557,106 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         sender.isEnabled = false
     }
 
-    @objc private func toggleAdvancedSection(_ sender: NSButton) {
-        advancedSectionExpanded.toggle()
+    @objc private func showServerSettings() {
+        let alert = NSAlert()
+        alert.messageText = "Custom Server"
+        alert.informativeText = "Configure a custom server address for PointerPals"
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
 
-        // Find the container view and all advanced content views
-        guard let containerView = sender.superview,
-              let window = sender.window else {
-            return
-        }
+        // Create container view
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 120))
+        var yPos: CGFloat = 120
 
-        // Find all advanced content views by their tags (990-993, 995)
-        let advancedTags = [990, 991, 992, 993, 995]
-        let advancedViews = containerView.subviews.filter { advancedTags.contains($0.tag) }
+        // Server Address label
+        let serverURLLabel = NSTextField(labelWithString: "Server Address:")
+        serverURLLabel.frame = NSRect(x: 20, y: yPos - 20, width: 340, height: 17)
+        serverURLLabel.isBezeled = false
+        serverURLLabel.drawsBackground = false
+        serverURLLabel.isEditable = false
+        serverURLLabel.isSelectable = false
+        serverURLLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
 
-        // Find all non-advanced views that need to be shifted to compensate for window resize
-        let nonAdvancedViews = containerView.subviews.filter { !advancedTags.contains($0.tag) }
+        yPos -= 46
 
-        // Calculate height change
-        let baseHeight: CGFloat = 320
-        let expandedHeight: CGFloat = 400
-        let heightDiff = expandedHeight - baseHeight
+        // Server Address field
+        let serverURLField = NSTextField(frame: NSRect(x: 20, y: yPos, width: 340, height: 24))
+        serverURLField.stringValue = PointerPalsConfig.customServerURL ?? PointerPalsConfig.defaultServerURL
+        serverURLField.placeholderString = PointerPalsConfig.defaultServerURL
+        serverURLField.font = NSFont.systemFont(ofSize: 13)
+        serverURLField.tag = 995
 
-        // Animate the changes
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.25
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        yPos -= 30
 
-            if advancedSectionExpanded {
-                // Expanding: shift all non-advanced views UP by heightDiff to compensate for window growing downward
-                for view in nonAdvancedViews {
-                    var frame = view.frame
-                    frame.origin.y += heightDiff
-                    view.animator().frame = frame
-                }
+        // Reset button
+        let resetButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 160, height: 28))
+        resetButton.title = "Reset to Default"
+        resetButton.bezelStyle = .rounded
+        resetButton.target = self
+        resetButton.action = #selector(resetServerURLInModal(_:))
 
-                // Show advanced views with fade
-                for view in advancedViews {
-                    view.animator().isHidden = false
-                    view.animator().alphaValue = 1.0
-                }
+        yPos -= 24
 
-                // Resize container
-                var containerFrame = containerView.frame
-                containerFrame.size.height = expandedHeight
-                containerView.animator().frame = containerFrame
+        // Info label
+        let infoLabel = NSTextField(labelWithString: "Requires app restart to take effect")
+        infoLabel.frame = NSRect(x: 20, y: yPos, width: 340, height: 14)
+        infoLabel.isBezeled = false
+        infoLabel.drawsBackground = false
+        infoLabel.isEditable = false
+        infoLabel.isSelectable = false
+        infoLabel.font = NSFont.systemFont(ofSize: 11)
+        infoLabel.textColor = .secondaryLabelColor
+        infoLabel.alignment = .left
 
-                // Resize window (grows downward)
-                var windowFrame = window.frame
-                windowFrame.size.height += heightDiff
-                windowFrame.origin.y -= heightDiff
-                window.animator().setFrame(windowFrame, display: true)
-            } else {
-                // Collapsing: hide advanced views first
-                for view in advancedViews {
-                    view.animator().isHidden = true
-                    view.animator().alphaValue = 0.0
-                }
+        containerView.addSubview(serverURLLabel)
+        containerView.addSubview(serverURLField)
+        containerView.addSubview(resetButton)
+        containerView.addSubview(infoLabel)
 
-                // Shift all non-advanced views DOWN by heightDiff
-                for view in nonAdvancedViews {
-                    var frame = view.frame
-                    frame.origin.y -= heightDiff
-                    view.animator().frame = frame
-                }
+        alert.accessoryView = containerView
+        alert.window.initialFirstResponder = serverURLField
 
-                // Resize container
-                var containerFrame = containerView.frame
-                containerFrame.size.height = baseHeight
-                containerView.animator().frame = containerFrame
+        let response = alert.runModal()
 
-                // Resize window (shrinks upward)
-                var windowFrame = window.frame
-                windowFrame.size.height -= heightDiff
-                windowFrame.origin.y += heightDiff
-                window.animator().setFrame(windowFrame, display: true)
+        if response == .alertFirstButtonReturn {
+            // Save button clicked
+            let urlString = serverURLField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Validate URL format
+            guard PointerPalsConfig.isValidServerURL(urlString) else {
+                let errorAlert = NSAlert()
+                errorAlert.messageText = "Invalid Server URL"
+                errorAlert.informativeText = "Please enter a valid WebSocket URL (ws:// or wss://)"
+                errorAlert.alertStyle = .warning
+                errorAlert.addButton(withTitle: "OK")
+                errorAlert.runModal()
+                return
             }
-        }, completionHandler: nil)
+
+            // Save the custom URL
+            PointerPalsConfig.setCustomServerURL(urlString)
+
+            // Show success message
+            let successAlert = NSAlert()
+            successAlert.messageText = "Server Address Saved"
+            successAlert.informativeText = "Please restart the app for the change to take effect."
+            successAlert.alertStyle = .informational
+            successAlert.addButton(withTitle: "OK")
+            successAlert.runModal()
+        }
+        // If Cancel was clicked, do nothing
     }
 
-    @objc private func saveServerURL(_ sender: NSButton) {
+    @objc private func resetServerURLInModal(_ sender: NSButton) {
         guard let containerView = sender.superview,
               let serverURLField = containerView.subviews.first(where: { $0.tag == 995 }) as? NSTextField else {
             return
         }
 
-        let urlString = serverURLField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Validate URL format
-        guard PointerPalsConfig.isValidServerURL(urlString) else {
-            let errorAlert = NSAlert()
-            errorAlert.messageText = "Invalid Server URL"
-            errorAlert.informativeText = "Please enter a valid WebSocket URL (ws:// or wss://)"
-            errorAlert.alertStyle = .warning
-            errorAlert.addButton(withTitle: "OK")
-            errorAlert.runModal()
-            return
-        }
-
-        // Save the custom URL
-        PointerPalsConfig.setCustomServerURL(urlString)
-
-        // Show success message
-        let successAlert = NSAlert()
-        successAlert.messageText = "Server Address Saved"
-        successAlert.informativeText = "Please restart the app for the change to take effect."
-        successAlert.alertStyle = .informational
-        successAlert.addButton(withTitle: "OK")
-        successAlert.runModal()
-    }
-
-    @objc private func resetServerURL(_ sender: NSButton) {
-        guard let containerView = sender.superview,
-              let serverURLField = containerView.subviews.first(where: { $0.tag == 995 }) as? NSTextField else {
-            return
-        }
-
-        // Reset to default
-        PointerPalsConfig.setCustomServerURL(nil)
+        // Reset field to default
         serverURLField.stringValue = PointerPalsConfig.defaultServerURL
-
-        // Show success message
-        let successAlert = NSAlert()
-        successAlert.messageText = "Server Address Reset"
-        successAlert.informativeText = "Server address has been reset to default. Please restart the app for the change to take effect."
-        successAlert.alertStyle = .informational
-        successAlert.addButton(withTitle: "OK")
-        successAlert.runModal()
     }
+
 
     // MARK: - NSTextFieldDelegate
 
