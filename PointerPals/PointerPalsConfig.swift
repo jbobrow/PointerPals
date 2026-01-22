@@ -13,7 +13,7 @@ struct PointerPalsConfig {
     /// - Local: "ws://localhost:8080"
     /// - LAN: "ws://192.168.1.100:8080"
     /// - Production: "wss://your-server.com"
-    static let defaultServerURL = "wss://pointerpals-163455294213.us-east4.run.app"
+    static let defaultServerURL = "wss://pointerpals-server.jonbobrow.com"
 
     /// UserDefaults key for custom server URL
     private static let serverURLKey = "PointerPals_ServerURL"
