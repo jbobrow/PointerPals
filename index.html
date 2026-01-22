@@ -122,6 +122,22 @@
             background-repeat: no-repeat;
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
         }
+        .navbar {
+            max-width: 800px;
+            min-width: 300px;
+            display: flex;
+            align-items: center;
+        }
+        a.download {
+            color: #FFFFFF;
+            background: #306FDC;
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-weight: 600;
+        }
+        a:hover.download {
+            opacity: 0.9;
+        }
 
         footer {
             text-align: center;
@@ -149,9 +165,12 @@
 </head>
 <body>
     <nav>
-        <a href="index.html">PointerPals</a>
-        <a href="support.html">Support</a>
-        <a href="privacy.html">Privacy</a>
+        <div class="navbar">
+            <a href="index.html">PointerPals</a>
+            <a href="support.html">Support</a>
+            <a href="privacy.html">Privacy</a>
+            <a class="download" href="https://github.com/jbobrow/PointerPals/releases/download/v1.1/PointerPals-v1.1.zip">Download</a>
+        </div>
     </nav>
 
     <div class="hero">

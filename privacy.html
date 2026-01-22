@@ -70,13 +70,32 @@
             border-top: 1px solid #d2d2d7;
             margin-top: 80px;
         }
+        .navbar {
+            max-width: 800px;
+            min-width: 300px;
+            display: flex;
+            align-items: center;
+        }
+        a.download {
+            color: #FFFFFF;
+            background: #306FDC;
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-weight: 600;
+        }
+        a:hover.download {
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
     <nav>
-        <a href="index.html">PointerPals</a>
-        <a href="support.html">Support</a>
-        <a href="privacy.html">Privacy</a>
+        <div class="navbar">
+            <a href="index.html">PointerPals</a>
+            <a href="support.html">Support</a>
+            <a href="privacy.html">Privacy</a>
+            <a class="download" href="https://github.com/jbobrow/PointerPals/releases/download/v1.1/PointerPals-v1.1.zip">Download</a>
+        </div>
     </nav>
 
     <div class="content">
