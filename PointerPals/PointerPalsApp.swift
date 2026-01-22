@@ -452,7 +452,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         // Custom Server button
         let customServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 28))
-        customServerButton.title = "Custom Server..."
+        customServerButton.title = "Configure Server..."
         customServerButton.bezelStyle = .rounded
         customServerButton.target = self
         customServerButton.action = #selector(showServerSettings)
@@ -559,8 +559,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
     @objc private func showServerSettings() {
         let alert = NSAlert()
-        alert.messageText = "Custom Server"
-        alert.informativeText = "Configure a custom server address for PointerPals"
+        alert.messageText = "Configure Custom Server"
+        alert.informativeText = ""
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 

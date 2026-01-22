@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PointerPals WebSocket Test</title>
+</head>
+<body>
+    <h1>PointerPals WebSocket Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const ws = new WebSocket('ws://34.170.116.32:8080'); /*YOUR SERVER ADDRESS HERE*/
+        const status = document.getElementById('status');
+        const messages = document.getElementById('messages');
+        
+        ws.onopen = () => {
+            status.innerHTML = '✅ Connected to PointerPals server!';
+            status.style.color = 'green';
+            
+            // Register
+            ws.send(JSON.stringify({
+                action: 'register',
+                userId: 'test-user-' + Math.random().toString(36).substr(2, 9),
+                username: 'Test User'
+            }));
+        };
+        
+        ws.onmessage = (event) => {
+            messages.innerHTML += '<div>Received: ' + event.data + '</div>';
+        };
+        
+        ws.onerror = (error) => {
+            status.innerHTML = '❌ Connection error';
+            status.style.color = 'red';
+            console.error('WebSocket error:', error);
+        };
+        
+        ws.onclose = () => {
+            status.innerHTML = '⚠️ Connection closed';
+            status.style.color = 'orange';
+        };
+    </script>
+</body>
+</html>
