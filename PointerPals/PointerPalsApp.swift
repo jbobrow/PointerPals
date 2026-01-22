@@ -315,7 +315,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let containerHeight: CGFloat = 280
+        let containerHeight: CGFloat = 300
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
 
         var yPos: CGFloat = containerHeight
@@ -448,10 +448,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         sizeValueLabel.textColor = .secondaryLabelColor
         sizeValueLabel.tag = 999
 
-        yPos -= 40
+        yPos -= 36
 
         // Custom Server button
-        let customServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
+        let customServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 28))
         customServerButton.title = "Custom Server..."
         customServerButton.bezelStyle = .rounded
         customServerButton.target = self
@@ -564,13 +564,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        // Create container view
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 120))
-        var yPos: CGFloat = 120
+        // Create container view with better spacing
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 110))
+        var yPos: CGFloat = 110
 
         // Server Address label
         let serverURLLabel = NSTextField(labelWithString: "Server Address:")
-        serverURLLabel.frame = NSRect(x: 20, y: yPos - 20, width: 340, height: 17)
+        serverURLLabel.frame = NSRect(x: 20, y: yPos - 20, width: 110, height: 17)
         serverURLLabel.isBezeled = false
         serverURLLabel.drawsBackground = false
         serverURLLabel.isEditable = false
@@ -586,20 +586,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         serverURLField.font = NSFont.systemFont(ofSize: 13)
         serverURLField.tag = 995
 
-        yPos -= 30
+        yPos -= 36
 
-        // Reset button
+        // Reset button (left-aligned with field)
         let resetButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 160, height: 28))
         resetButton.title = "Reset to Default"
         resetButton.bezelStyle = .rounded
         resetButton.target = self
         resetButton.action = #selector(resetServerURLInModal(_:))
 
-        yPos -= 24
+        yPos -= 8
 
-        // Info label
+        // Info label (positioned below reset button with minimal spacing)
         let infoLabel = NSTextField(labelWithString: "Requires app restart to take effect")
-        infoLabel.frame = NSRect(x: 20, y: yPos, width: 340, height: 14)
+        infoLabel.frame = NSRect(x: 20, y: yPos - 10, width: 340, height: 14)
         infoLabel.isBezeled = false
         infoLabel.drawsBackground = false
         infoLabel.isEditable = false
