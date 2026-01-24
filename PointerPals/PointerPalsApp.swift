@@ -76,6 +76,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         // Setup menu bar
         setupMenuBar()
+
+        // Auto-start publishing when app launches
+        cursorPublisher.startPublishing()
+
+        // Check for first launch and prompt for launch on startup
+        checkFirstLaunch()
     }
     
     private func setupMenuBar() {
@@ -127,19 +133,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func updateMenu() {
         let menu = NSMenu()
 
-        // Publishing status
-        let publishItem = NSMenuItem(
-            title: cursorPublisher.isPublishing ? "Stop Publishing" : "Start Publishing",
-            action: #selector(togglePublishing),
-            keyEquivalent: "p"
+        // Add a Pal (moved to top)
+        let addSubItem = NSMenuItem(
+            title: "Add a Pal...",
+            action: #selector(showAddSubscription),
+            keyEquivalent: "a"
         )
-        publishItem.target = self
-        menu.addItem(publishItem)
+        addSubItem.target = self
+        menu.addItem(addSubItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // Subscriptions section
-        let subsHeader = NSMenuItem(title: "Subscriptions", action: nil, keyEquivalent: "")
+        // My PointerPals section (renamed from Subscriptions)
+        let subsHeader = NSMenuItem(title: "My PointerPals", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
         menu.addItem(subsHeader)
 
@@ -201,20 +207,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
                 menu.addItem(subItem)
             }
         }
-        
+
         menu.addItem(NSMenuItem.separator())
-        
-        // Add subscription
-        let addSubItem = NSMenuItem(
-            title: "Add Subscription...",
-            action: #selector(showAddSubscription),
-            keyEquivalent: "a"
-        )
-        addSubItem.target = self
-        menu.addItem(addSubItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
+
         // Settings
         let settingsItem = NSMenuItem(
             title: "Settings...",
@@ -223,9 +218,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         )
         settingsItem.target = self
         menu.addItem(settingsItem)
-        
+
         menu.addItem(NSMenuItem.separator())
-        
+
         // Quit
         let quitItem = NSMenuItem(
             title: "Quit PointerPals",
@@ -234,7 +229,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         )
         quitItem.target = self
         menu.addItem(quitItem)
-        
+
         statusItem.menu = menu
     }
     
@@ -282,9 +277,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     
     @objc private func showAddSubscription() {
         let alert = NSAlert()
-        alert.messageText = "Add Subscription"
-        alert.informativeText = "Enter the User ID to subscribe to:"
-        alert.addButton(withTitle: "Subscribe")
+        alert.messageText = "Add a Pal"
+        alert.informativeText = "Enter your pal's User ID:"
+        alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
         
         let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
@@ -315,7 +310,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let containerHeight: CGFloat = 300
+        let containerHeight: CGFloat = 330
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
 
         var yPos: CGFloat = containerHeight
@@ -450,6 +445,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 36
 
+        // Launch on Startup checkbox
+        let launchOnStartupCheckbox = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 18))
+        launchOnStartupCheckbox.setButtonType(.switch)
+        launchOnStartupCheckbox.title = "Launch PointerPals on Startup"
+        launchOnStartupCheckbox.state = isLaunchOnStartupEnabled() ? .on : .off
+        launchOnStartupCheckbox.target = self
+        launchOnStartupCheckbox.action = #selector(toggleLaunchOnStartup(_:))
+        launchOnStartupCheckbox.font = NSFont.systemFont(ofSize: 13)
+
+        yPos -= 40
+
         // Custom Server button
         let customServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 28))
         customServerButton.title = "Configure Server..."
@@ -470,6 +476,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         containerView.addSubview(cursorSizeSlider)
         containerView.addSubview(sizeValueLabel)
         containerView.addSubview(demoCursorButton)
+        containerView.addSubview(launchOnStartupCheckbox)
         containerView.addSubview(customServerButton)
 
         alert.accessoryView = containerView
@@ -847,5 +854,78 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     @objc private func quit() {
         stopDemoCursor()
         NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Launch on Startup
+
+    private func checkFirstLaunch() {
+        let hasLaunchedBefore = UserDefaults.standard.bool(forKey: "PointerPals_HasLaunchedBefore")
+
+        if !hasLaunchedBefore {
+            // Mark as launched
+            UserDefaults.standard.set(true, forKey: "PointerPals_HasLaunchedBefore")
+
+            // Show first launch prompt
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.showFirstLaunchPrompt()
+            }
+        }
+    }
+
+    private func showFirstLaunchPrompt() {
+        let alert = NSAlert()
+        alert.messageText = "Welcome to PointerPals!"
+        alert.informativeText = "Would you like PointerPals to launch automatically when you start your computer?"
+        alert.addButton(withTitle: "Yes, Launch on Startup")
+        alert.addButton(withTitle: "No Thanks")
+        alert.alertStyle = .informational
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            setLaunchOnStartup(true)
+        }
+    }
+
+    private func setLaunchOnStartup(_ enabled: Bool) {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.jonathanbobrow.PointerPals"
+
+        if enabled {
+            // Add to login items
+            let script = """
+            tell application "System Events"
+                make login item at end with properties {path:"\(Bundle.main.bundlePath)", hidden:false}
+            end tell
+            """
+            if let appleScript = NSAppleScript(source: script) {
+                var error: NSDictionary?
+                appleScript.executeAndReturnError(&error)
+                if error == nil {
+                    UserDefaults.standard.set(true, forKey: "PointerPals_LaunchOnStartup")
+                }
+            }
+        } else {
+            // Remove from login items
+            let script = """
+            tell application "System Events"
+                delete login item "PointerPals"
+            end tell
+            """
+            if let appleScript = NSAppleScript(source: script) {
+                var error: NSDictionary?
+                appleScript.executeAndReturnError(&error)
+                if error == nil {
+                    UserDefaults.standard.set(false, forKey: "PointerPals_LaunchOnStartup")
+                }
+            }
+        }
+    }
+
+    private func isLaunchOnStartupEnabled() -> Bool {
+        return UserDefaults.standard.bool(forKey: "PointerPals_LaunchOnStartup")
+    }
+
+    @objc private func toggleLaunchOnStartup(_ sender: NSButton) {
+        let enabled = sender.state == .on
+        setLaunchOnStartup(enabled)
     }
 }
