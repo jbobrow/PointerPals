@@ -257,12 +257,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     @objc private func showAddSubscription() {
         let alert = NSAlert()
         alert.messageText = "Add a Pal"
-        alert.informativeText = "Enter your pal's User ID:"
+        alert.informativeText = "Enter your pal's Pal ID:"
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
         
         let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        inputField.placeholderString = "user_8675309"
+        inputField.placeholderString = "pal_8675309"
         alert.accessoryView = inputField
         
         alert.window.initialFirstResponder = inputField
@@ -322,8 +322,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 76
 
-        // User ID section
-        let userIdLabel = NSTextField(labelWithString: "Your User ID:")
+        // Pal ID section
+        let userIdLabel = NSTextField(labelWithString: "Your Pal ID:")
         userIdLabel.frame = NSRect(x: 20, y: yPos, width: 100, height: 17)
         userIdLabel.isBezeled = false
         userIdLabel.drawsBackground = false
@@ -343,7 +343,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 36
         let copyIdButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
-        copyIdButton.title = "Copy User ID to Share with Friends"
+        copyIdButton.title = "Copy Pal ID to Share with Friends"
         copyIdButton.bezelStyle = .rounded
         if #available(macOS 11.0, *) {
             copyIdButton.hasDestructiveAction = false
@@ -852,8 +852,82 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     }
 
     private func showFirstLaunchPrompt() {
+        // Step 1: Ask for username
+        let usernameAlert = NSAlert()
+        usernameAlert.messageText = "Welcome to PointerPals!"
+        usernameAlert.informativeText = "Give your Personal Pointer a name to share with Pals:"
+        usernameAlert.addButton(withTitle: "Continue")
+        usernameAlert.addButton(withTitle: "Skip")
+        usernameAlert.alertStyle = .informational
+
+        let usernameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        usernameField.placeholderString = "Enter your name"
+        usernameAlert.accessoryView = usernameField
+        usernameAlert.window.initialFirstResponder = usernameField
+
+        let response = usernameAlert.runModal()
+
+        var username = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if response == .alertFirstButtonReturn && !username.isEmpty {
+            // Enforce max length
+            if username.count > PointerPalsConfig.maxUsernameLength {
+                username = String(username.prefix(PointerPalsConfig.maxUsernameLength))
+            }
+            networkManager.currentUsername = username
+        } else {
+            username = networkManager.currentUsername
+        }
+
+        // Step 2: Show welcome dialog with Pal ID
+        showWelcomeDialog(username: username)
+
+        // Step 3: Ask about launch on startup
+        showLaunchOnStartupPrompt()
+    }
+
+    private func showWelcomeDialog(username: String) {
         let alert = NSAlert()
-        alert.messageText = "Welcome to PointerPals!"
+        alert.messageText = "Welcome \(username)!"
+        alert.informativeText = "Here is your Pal ID to share with your PointerPals:"
+        alert.addButton(withTitle: "Copy Pal ID")
+        alert.addButton(withTitle: "Done")
+        alert.alertStyle = .informational
+
+        // Create container for Pal ID display
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
+
+        let palIdField = NSTextField(labelWithString: networkManager.currentUserId)
+        palIdField.frame = NSRect(x: 0, y: 10, width: 300, height: 20)
+        palIdField.isBezeled = true
+        palIdField.drawsBackground = true
+        palIdField.backgroundColor = .controlBackgroundColor
+        palIdField.isEditable = false
+        palIdField.isSelectable = true
+        palIdField.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .medium)
+        palIdField.alignment = .center
+
+        containerView.addSubview(palIdField)
+        alert.accessoryView = containerView
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Copy to clipboard
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(networkManager.currentUserId, forType: .string)
+
+            // Show brief confirmation
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "Pal ID Copied!"
+            confirmAlert.informativeText = "Share it with your friends to connect."
+            confirmAlert.addButton(withTitle: "OK")
+            confirmAlert.alertStyle = .informational
+            confirmAlert.runModal()
+        }
+    }
+
+    private func showLaunchOnStartupPrompt() {
+        let alert = NSAlert()
+        alert.messageText = "One More Thing..."
         alert.informativeText = "Would you like PointerPals to launch automatically when you start your computer?"
         alert.addButton(withTitle: "Yes, Launch on Startup")
         alert.addButton(withTitle: "No Thanks")

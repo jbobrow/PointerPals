@@ -50,7 +50,7 @@ class NetworkManager {
         }
 
         if PointerPalsConfig.debugLogging {
-            print("Network Manager initialized with User ID: \(currentUserId), Username: \(currentUsername)")
+            print("Network Manager initialized with Pal ID: \(currentUserId), Username: \(currentUsername)")
         }
 
         // Establish WebSocket connection
