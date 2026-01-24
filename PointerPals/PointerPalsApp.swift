@@ -332,7 +332,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         userIdLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
                 
         let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        userIdField.frame = NSRect(x: 110, y: yPos - 4, width: 220, height: 20)
+        userIdField.frame = NSRect(x: 130, y: yPos - 4, width: 220, height: 20)
         userIdField.isBezeled = false
         userIdField.drawsBackground = false
         userIdField.isEditable = false
@@ -343,7 +343,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 36
         let copyIdButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
-        copyIdButton.title = "Copy Pointer ID to Share with Friends"
+        copyIdButton.title = "Copy Pointer ID to Share with Pals"
         copyIdButton.bezelStyle = .rounded
         if #available(macOS 11.0, *) {
             copyIdButton.hasDestructiveAction = false
@@ -855,7 +855,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         // Step 1: Ask for username
         let usernameAlert = NSAlert()
         usernameAlert.messageText = "Welcome to PointerPals!"
-        usernameAlert.informativeText = "Give your Personal Pointer a name to share with Pals:"
+        usernameAlert.informativeText = "Give your Pointer a name to share with Pals:"
         usernameAlert.addButton(withTitle: "Continue")
         usernameAlert.addButton(withTitle: "Skip")
         usernameAlert.alertStyle = .informational
@@ -918,7 +918,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             // Show brief confirmation
             let confirmAlert = NSAlert()
             confirmAlert.messageText = "Pointer ID Copied!"
-            confirmAlert.informativeText = "Share it with your friends to connect."
+            confirmAlert.informativeText = "Share it with your Pals to connect."
             confirmAlert.addButton(withTitle: "OK")
             confirmAlert.alertStyle = .informational
             confirmAlert.runModal()
@@ -930,7 +930,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.messageText = "One More Thing..."
         alert.informativeText = "Would you like PointerPals to launch automatically when you start your computer?"
         alert.addButton(withTitle: "Yes, Launch on Startup")
-        alert.addButton(withTitle: "No Thanks")
+        alert.addButton(withTitle: "Maybe Later")
         alert.alertStyle = .informational
 
         let response = alert.runModal()
