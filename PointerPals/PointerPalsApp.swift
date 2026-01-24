@@ -20,7 +20,7 @@ struct PointerPalsApp: App {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, WelcomeWindowDelegate {
     private var statusItem: NSStatusItem!
     private var cursorPublisher: CursorPublisher!
     private var cursorManager: CursorManager!
@@ -30,6 +30,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private var demoTimer: Timer?
     private weak var demoButton: NSButton?  // Weak reference to demo button for updates
     private var originalUsername: String = ""  // Store original username for comparison
+    private var welcomeWindowController: WelcomeWindowController?
     private var showUsernames: Bool {
         didSet {
             UserDefaults.standard.set(showUsernames, forKey: "PointerPals_ShowUsernames")
@@ -844,99 +845,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
             // Mark as launched
             UserDefaults.standard.set(true, forKey: "PointerPals_HasLaunchedBefore")
 
-            // Show first launch prompt
+            // Show welcome window
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.showFirstLaunchPrompt()
+                self?.showWelcomeWindow()
             }
         }
     }
 
-    private func showFirstLaunchPrompt() {
-        // Step 1: Ask for username
-        let usernameAlert = NSAlert()
-        usernameAlert.messageText = "Welcome to PointerPals!"
-        usernameAlert.informativeText = "Give your Pointer a name to share with Pals:"
-        usernameAlert.addButton(withTitle: "Continue")
-        usernameAlert.addButton(withTitle: "Skip")
-        usernameAlert.alertStyle = .informational
-
-        let usernameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        usernameField.placeholderString = "Enter your name"
-        usernameAlert.accessoryView = usernameField
-        usernameAlert.window.initialFirstResponder = usernameField
-
-        let response = usernameAlert.runModal()
-
-        var username = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        if response == .alertFirstButtonReturn && !username.isEmpty {
-            // Enforce max length
-            if username.count > PointerPalsConfig.maxUsernameLength {
-                username = String(username.prefix(PointerPalsConfig.maxUsernameLength))
-            }
-            networkManager.currentUsername = username
-        } else {
-            username = networkManager.currentUsername
-        }
-
-        // Step 2: Show welcome dialog with Pal ID
-        showWelcomeDialog(username: username)
-
-        // Step 3: Ask about launch on startup
-        showLaunchOnStartupPrompt()
+    private func showWelcomeWindow() {
+        welcomeWindowController = WelcomeWindowController(
+            pointerId: networkManager.currentUserId,
+            defaultUsername: networkManager.currentUsername
+        )
+        welcomeWindowController?.delegate = self
+        welcomeWindowController?.showWindow()
     }
 
-    private func showWelcomeDialog(username: String) {
-        let alert = NSAlert()
-        alert.messageText = "Welcome \(username)!"
-        alert.informativeText = "Here is your Pointer ID to share with your PointerPals:"
-        alert.addButton(withTitle: "Copy Pointer ID")
-        alert.addButton(withTitle: "Done")
-        alert.alertStyle = .informational
+    // MARK: - WelcomeWindowDelegate
 
-        // Create container for Pointer ID display
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
+    func welcomeWindowDidComplete(username: String, launchOnStartup: Bool) {
+        // Save username
+        networkManager.currentUsername = username
 
-        let palIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        palIdField.frame = NSRect(x: 0, y: 10, width: 300, height: 20)
-        palIdField.isBezeled = true
-        palIdField.drawsBackground = true
-        palIdField.backgroundColor = .controlBackgroundColor
-        palIdField.isEditable = false
-        palIdField.isSelectable = true
-        palIdField.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .medium)
-        palIdField.alignment = .center
-
-        containerView.addSubview(palIdField)
-        alert.accessoryView = containerView
-
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            // Copy to clipboard
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(networkManager.currentUserId, forType: .string)
-
-            // Show brief confirmation
-            let confirmAlert = NSAlert()
-            confirmAlert.messageText = "Pointer ID Copied!"
-            confirmAlert.informativeText = "Share it with your Pals to connect."
-            confirmAlert.addButton(withTitle: "OK")
-            confirmAlert.alertStyle = .informational
-            confirmAlert.runModal()
-        }
-    }
-
-    private func showLaunchOnStartupPrompt() {
-        let alert = NSAlert()
-        alert.messageText = "One More Thing..."
-        alert.informativeText = "Would you like PointerPals to launch automatically when you start your computer?"
-        alert.addButton(withTitle: "Yes, Launch on Startup")
-        alert.addButton(withTitle: "Maybe Later")
-        alert.alertStyle = .informational
-
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
+        // Set launch on startup preference
+        if launchOnStartup {
             setLaunchOnStartup(true)
         }
+
+        // Clean up
+        welcomeWindowController = nil
     }
 
     private func setLaunchOnStartup(_ enabled: Bool) {
