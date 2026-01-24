@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import ServiceManagement
 
 @main
 struct PointerPalsApp: App {
@@ -97,18 +98,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func updateStatusItemTitle() {
         guard let button = statusItem.button else { return }
 
-        let isPublishing = cursorPublisher.isPublishing
         let subCount = cursorManager.activeSubscriptionsCount
 
-        // Determine which icon to use based on state
-        let iconName: String
-        if isPublishing {
-            iconName = PointerPalsConfig.publishingIcon
-        } else if subCount > 0 {
-            iconName = PointerPalsConfig.activeSubscriptionsIcon
-        } else {
-            iconName = PointerPalsConfig.idleIcon
-        }
+        // Always show publishing icon since app is always publishing
+        let iconName = PointerPalsConfig.publishingIcon
 
         // Load SF Symbol icon
         if let icon = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
@@ -123,7 +116,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         } else {
             // Fallback if SF Symbol not available
             button.image = nil
-            button.title = isPublishing ? "📍" : (subCount > 0 ? "👀" : "💤")
+            button.title = "📍"
             if PointerPalsConfig.showSubscriptionCount {
                 button.title += " \(subCount)"
             }
@@ -233,20 +226,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         statusItem.menu = menu
     }
     
-    @objc private func togglePublishing() {
-        if cursorPublisher.isPublishing {
-            cursorPublisher.stopPublishing()
-        } else {
-            cursorPublisher.startPublishing()
-        }
-
-        // Defer menu update to avoid crash when updating menu while it's active
-        DispatchQueue.main.async { [weak self] in
-            self?.updateStatusItemTitle()
-            self?.updateMenu()
-        }
-    }
-
     @objc private func toggleUsernames() {
         showUsernames.toggle()
     }
@@ -887,41 +866,38 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     }
 
     private func setLaunchOnStartup(_ enabled: Bool) {
-        let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.jonathanbobrow.PointerPals"
-
-        if enabled {
-            // Add to login items
-            let script = """
-            tell application "System Events"
-                make login item at end with properties {path:"\(Bundle.main.bundlePath)", hidden:false}
-            end tell
-            """
-            if let appleScript = NSAppleScript(source: script) {
-                var error: NSDictionary?
-                appleScript.executeAndReturnError(&error)
-                if error == nil {
-                    UserDefaults.standard.set(true, forKey: "PointerPals_LaunchOnStartup")
+        if #available(macOS 13.0, *) {
+            // Use modern ServiceManagement framework
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
                 }
+                UserDefaults.standard.set(enabled, forKey: "PointerPals_LaunchOnStartup")
+            } catch {
+                print("Failed to \(enabled ? "register" : "unregister") launch at login: \(error.localizedDescription)")
             }
         } else {
-            // Remove from login items
-            let script = """
-            tell application "System Events"
-                delete login item "PointerPals"
-            end tell
-            """
-            if let appleScript = NSAppleScript(source: script) {
-                var error: NSDictionary?
-                appleScript.executeAndReturnError(&error)
-                if error == nil {
-                    UserDefaults.standard.set(false, forKey: "PointerPals_LaunchOnStartup")
-                }
+            // Fallback for older macOS versions using deprecated SMLoginItemSetEnabled
+            #if canImport(ServiceManagement)
+            let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.jonathanbobrow.PointerPals"
+            let success = SMLoginItemSetEnabled(bundleIdentifier as CFString, enabled)
+            if success {
+                UserDefaults.standard.set(enabled, forKey: "PointerPals_LaunchOnStartup")
             }
+            #endif
         }
     }
 
     private func isLaunchOnStartupEnabled() -> Bool {
-        return UserDefaults.standard.bool(forKey: "PointerPals_LaunchOnStartup")
+        if #available(macOS 13.0, *) {
+            // Check actual registration status from ServiceManagement
+            return SMAppService.mainApp.status == .enabled
+        } else {
+            // Fallback to stored preference for older macOS
+            return UserDefaults.standard.bool(forKey: "PointerPals_LaunchOnStartup")
+        }
     }
 
     @objc private func toggleLaunchOnStartup(_ sender: NSButton) {
