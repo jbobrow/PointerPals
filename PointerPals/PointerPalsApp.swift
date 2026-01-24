@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import ServiceManagement
 
 @main
 struct PointerPalsApp: App {
@@ -76,6 +77,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         // Setup menu bar
         setupMenuBar()
+
+        // Auto-start publishing when app launches
+        cursorPublisher.startPublishing()
+
+        // Check for first launch and prompt for launch on startup
+        checkFirstLaunch()
     }
     
     private func setupMenuBar() {
@@ -91,18 +98,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func updateStatusItemTitle() {
         guard let button = statusItem.button else { return }
 
-        let isPublishing = cursorPublisher.isPublishing
         let subCount = cursorManager.activeSubscriptionsCount
 
-        // Determine which icon to use based on state
-        let iconName: String
-        if isPublishing {
-            iconName = PointerPalsConfig.publishingIcon
-        } else if subCount > 0 {
-            iconName = PointerPalsConfig.activeSubscriptionsIcon
-        } else {
-            iconName = PointerPalsConfig.idleIcon
-        }
+        // Always show publishing icon since app is always publishing
+        let iconName = PointerPalsConfig.publishingIcon
 
         // Load SF Symbol icon
         if let icon = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
@@ -117,7 +116,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         } else {
             // Fallback if SF Symbol not available
             button.image = nil
-            button.title = isPublishing ? "📍" : (subCount > 0 ? "👀" : "💤")
+            button.title = "📍"
             if PointerPalsConfig.showSubscriptionCount {
                 button.title += " \(subCount)"
             }
@@ -127,19 +126,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func updateMenu() {
         let menu = NSMenu()
 
-        // Publishing status
-        let publishItem = NSMenuItem(
-            title: cursorPublisher.isPublishing ? "Stop Publishing" : "Start Publishing",
-            action: #selector(togglePublishing),
-            keyEquivalent: "p"
+        // Add a Pal (moved to top)
+        let addSubItem = NSMenuItem(
+            title: "Add a Pal...",
+            action: #selector(showAddSubscription),
+            keyEquivalent: "a"
         )
-        publishItem.target = self
-        menu.addItem(publishItem)
+        addSubItem.target = self
+        menu.addItem(addSubItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // Subscriptions section
-        let subsHeader = NSMenuItem(title: "Subscriptions", action: nil, keyEquivalent: "")
+        // My PointerPals section (renamed from Subscriptions)
+        let subsHeader = NSMenuItem(title: "My PointerPals", action: nil, keyEquivalent: "")
         subsHeader.isEnabled = false
         menu.addItem(subsHeader)
 
@@ -201,20 +200,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
                 menu.addItem(subItem)
             }
         }
-        
+
         menu.addItem(NSMenuItem.separator())
-        
-        // Add subscription
-        let addSubItem = NSMenuItem(
-            title: "Add Subscription...",
-            action: #selector(showAddSubscription),
-            keyEquivalent: "a"
-        )
-        addSubItem.target = self
-        menu.addItem(addSubItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
+
         // Settings
         let settingsItem = NSMenuItem(
             title: "Settings...",
@@ -223,9 +211,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         )
         settingsItem.target = self
         menu.addItem(settingsItem)
-        
+
         menu.addItem(NSMenuItem.separator())
-        
+
         // Quit
         let quitItem = NSMenuItem(
             title: "Quit PointerPals",
@@ -234,24 +222,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         )
         quitItem.target = self
         menu.addItem(quitItem)
-        
+
         statusItem.menu = menu
     }
     
-    @objc private func togglePublishing() {
-        if cursorPublisher.isPublishing {
-            cursorPublisher.stopPublishing()
-        } else {
-            cursorPublisher.startPublishing()
-        }
-
-        // Defer menu update to avoid crash when updating menu while it's active
-        DispatchQueue.main.async { [weak self] in
-            self?.updateStatusItemTitle()
-            self?.updateMenu()
-        }
-    }
-
     @objc private func toggleUsernames() {
         showUsernames.toggle()
     }
@@ -282,13 +256,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     
     @objc private func showAddSubscription() {
         let alert = NSAlert()
-        alert.messageText = "Add Subscription"
-        alert.informativeText = "Enter the User ID to subscribe to:"
-        alert.addButton(withTitle: "Subscribe")
+        alert.messageText = "Add a Pal"
+        alert.informativeText = "Enter your pal's Pointer ID:"
+        alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
-        
+
         let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        inputField.placeholderString = "user_8675309"
+        inputField.placeholderString = "PP_8675309"
         alert.accessoryView = inputField
         
         alert.window.initialFirstResponder = inputField
@@ -315,7 +289,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         alert.addButton(withTitle: "Done")
 
         // Create a container view with proper dimensions
-        let containerHeight: CGFloat = 300
+        let containerHeight: CGFloat = 330
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: containerHeight))
 
         var yPos: CGFloat = containerHeight
@@ -348,8 +322,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 76
 
-        // User ID section
-        let userIdLabel = NSTextField(labelWithString: "Your User ID:")
+        // Pointer ID section
+        let userIdLabel = NSTextField(labelWithString: "Your Pointer ID:")
         userIdLabel.frame = NSRect(x: 20, y: yPos, width: 100, height: 17)
         userIdLabel.isBezeled = false
         userIdLabel.drawsBackground = false
@@ -358,7 +332,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         userIdLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
                 
         let userIdField = NSTextField(labelWithString: networkManager.currentUserId)
-        userIdField.frame = NSRect(x: 110, y: yPos - 4, width: 220, height: 20)
+        userIdField.frame = NSRect(x: 130, y: yPos - 4, width: 220, height: 20)
         userIdField.isBezeled = false
         userIdField.drawsBackground = false
         userIdField.isEditable = false
@@ -369,7 +343,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 36
         let copyIdButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
-        copyIdButton.title = "Copy User ID to Share with Friends"
+        copyIdButton.title = "Copy Pointer ID to Share with Pals"
         copyIdButton.bezelStyle = .rounded
         if #available(macOS 11.0, *) {
             copyIdButton.hasDestructiveAction = false
@@ -450,6 +424,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 36
 
+        // Launch on Startup checkbox
+        let launchOnStartupCheckbox = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 18))
+        launchOnStartupCheckbox.setButtonType(.switch)
+        launchOnStartupCheckbox.title = "Launch PointerPals on Startup"
+        launchOnStartupCheckbox.state = isLaunchOnStartupEnabled() ? .on : .off
+        launchOnStartupCheckbox.target = self
+        launchOnStartupCheckbox.action = #selector(toggleLaunchOnStartup(_:))
+        launchOnStartupCheckbox.font = NSFont.systemFont(ofSize: 13)
+
+        yPos -= 40
+
         // Custom Server button
         let customServerButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 28))
         customServerButton.title = "Configure Server..."
@@ -470,6 +455,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
         containerView.addSubview(cursorSizeSlider)
         containerView.addSubview(sizeValueLabel)
         containerView.addSubview(demoCursorButton)
+        containerView.addSubview(launchOnStartupCheckbox)
         containerView.addSubview(customServerButton)
 
         alert.accessoryView = containerView
@@ -847,5 +833,149 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     @objc private func quit() {
         stopDemoCursor()
         NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Launch on Startup
+
+    private func checkFirstLaunch() {
+        let hasLaunchedBefore = UserDefaults.standard.bool(forKey: "PointerPals_HasLaunchedBefore")
+
+        if !hasLaunchedBefore {
+            // Mark as launched
+            UserDefaults.standard.set(true, forKey: "PointerPals_HasLaunchedBefore")
+
+            // Show first launch prompt
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.showFirstLaunchPrompt()
+            }
+        }
+    }
+
+    private func showFirstLaunchPrompt() {
+        // Step 1: Ask for username
+        let usernameAlert = NSAlert()
+        usernameAlert.messageText = "Welcome to PointerPals!"
+        usernameAlert.informativeText = "Give your Pointer a name to share with Pals:"
+        usernameAlert.addButton(withTitle: "Continue")
+        usernameAlert.addButton(withTitle: "Skip")
+        usernameAlert.alertStyle = .informational
+
+        let usernameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        usernameField.placeholderString = "Enter your name"
+        usernameAlert.accessoryView = usernameField
+        usernameAlert.window.initialFirstResponder = usernameField
+
+        let response = usernameAlert.runModal()
+
+        var username = usernameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if response == .alertFirstButtonReturn && !username.isEmpty {
+            // Enforce max length
+            if username.count > PointerPalsConfig.maxUsernameLength {
+                username = String(username.prefix(PointerPalsConfig.maxUsernameLength))
+            }
+            networkManager.currentUsername = username
+        } else {
+            username = networkManager.currentUsername
+        }
+
+        // Step 2: Show welcome dialog with Pal ID
+        showWelcomeDialog(username: username)
+
+        // Step 3: Ask about launch on startup
+        showLaunchOnStartupPrompt()
+    }
+
+    private func showWelcomeDialog(username: String) {
+        let alert = NSAlert()
+        alert.messageText = "Welcome \(username)!"
+        alert.informativeText = "Here is your Pointer ID to share with your PointerPals:"
+        alert.addButton(withTitle: "Copy Pointer ID")
+        alert.addButton(withTitle: "Done")
+        alert.alertStyle = .informational
+
+        // Create container for Pointer ID display
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
+
+        let palIdField = NSTextField(labelWithString: networkManager.currentUserId)
+        palIdField.frame = NSRect(x: 0, y: 10, width: 300, height: 20)
+        palIdField.isBezeled = true
+        palIdField.drawsBackground = true
+        palIdField.backgroundColor = .controlBackgroundColor
+        palIdField.isEditable = false
+        palIdField.isSelectable = true
+        palIdField.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .medium)
+        palIdField.alignment = .center
+
+        containerView.addSubview(palIdField)
+        alert.accessoryView = containerView
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Copy to clipboard
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(networkManager.currentUserId, forType: .string)
+
+            // Show brief confirmation
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "Pointer ID Copied!"
+            confirmAlert.informativeText = "Share it with your Pals to connect."
+            confirmAlert.addButton(withTitle: "OK")
+            confirmAlert.alertStyle = .informational
+            confirmAlert.runModal()
+        }
+    }
+
+    private func showLaunchOnStartupPrompt() {
+        let alert = NSAlert()
+        alert.messageText = "One More Thing..."
+        alert.informativeText = "Would you like PointerPals to launch automatically when you start your computer?"
+        alert.addButton(withTitle: "Yes, Launch on Startup")
+        alert.addButton(withTitle: "Maybe Later")
+        alert.alertStyle = .informational
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            setLaunchOnStartup(true)
+        }
+    }
+
+    private func setLaunchOnStartup(_ enabled: Bool) {
+        if #available(macOS 13.0, *) {
+            // Use modern ServiceManagement framework
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+                UserDefaults.standard.set(enabled, forKey: "PointerPals_LaunchOnStartup")
+            } catch {
+                print("Failed to \(enabled ? "register" : "unregister") launch at login: \(error.localizedDescription)")
+            }
+        } else {
+            // Fallback for older macOS versions using deprecated SMLoginItemSetEnabled
+            #if canImport(ServiceManagement)
+            let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.jonathanbobrow.PointerPals"
+            let success = SMLoginItemSetEnabled(bundleIdentifier as CFString, enabled)
+            if success {
+                UserDefaults.standard.set(enabled, forKey: "PointerPals_LaunchOnStartup")
+            }
+            #endif
+        }
+    }
+
+    private func isLaunchOnStartupEnabled() -> Bool {
+        if #available(macOS 13.0, *) {
+            // Check actual registration status from ServiceManagement
+            return SMAppService.mainApp.status == .enabled
+        } else {
+            // Fallback to stored preference for older macOS
+            return UserDefaults.standard.bool(forKey: "PointerPals_LaunchOnStartup")
+        }
+    }
+
+    @objc private func toggleLaunchOnStartup(_ sender: NSButton) {
+        let enabled = sender.state == .on
+        setLaunchOnStartup(enabled)
     }
 }
