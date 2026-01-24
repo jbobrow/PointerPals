@@ -257,12 +257,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     @objc private func showAddSubscription() {
         let alert = NSAlert()
         alert.messageText = "Add a Pal"
-        alert.informativeText = "Enter your pal's Pal ID:"
+        alert.informativeText = "Enter your pal's Pointer ID:"
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
-        
+
         let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        inputField.placeholderString = "pal_8675309"
+        inputField.placeholderString = "pointer_8675309"
         alert.accessoryView = inputField
         
         alert.window.initialFirstResponder = inputField
@@ -322,8 +322,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 76
 
-        // Pal ID section
-        let userIdLabel = NSTextField(labelWithString: "Your Pal ID:")
+        // Pointer ID section
+        let userIdLabel = NSTextField(labelWithString: "Your Pointer ID:")
         userIdLabel.frame = NSRect(x: 20, y: yPos, width: 100, height: 17)
         userIdLabel.isBezeled = false
         userIdLabel.drawsBackground = false
@@ -343,7 +343,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
         yPos -= 36
         let copyIdButton = NSButton(frame: NSRect(x: 20, y: yPos, width: 340, height: 32))
-        copyIdButton.title = "Copy Pal ID to Share with Friends"
+        copyIdButton.title = "Copy Pointer ID to Share with Friends"
         copyIdButton.bezelStyle = .rounded
         if #available(macOS 11.0, *) {
             copyIdButton.hasDestructiveAction = false
@@ -888,12 +888,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
     private func showWelcomeDialog(username: String) {
         let alert = NSAlert()
         alert.messageText = "Welcome \(username)!"
-        alert.informativeText = "Here is your Pal ID to share with your PointerPals:"
-        alert.addButton(withTitle: "Copy Pal ID")
+        alert.informativeText = "Here is your Pointer ID to share with your PointerPals:"
+        alert.addButton(withTitle: "Copy Pointer ID")
         alert.addButton(withTitle: "Done")
         alert.alertStyle = .informational
 
-        // Create container for Pal ID display
+        // Create container for Pointer ID display
         let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
 
         let palIdField = NSTextField(labelWithString: networkManager.currentUserId)
@@ -917,7 +917,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate {
 
             // Show brief confirmation
             let confirmAlert = NSAlert()
-            confirmAlert.messageText = "Pal ID Copied!"
+            confirmAlert.messageText = "Pointer ID Copied!"
             confirmAlert.informativeText = "Share it with your friends to connect."
             confirmAlert.addButton(withTitle: "OK")
             confirmAlert.alertStyle = .informational
