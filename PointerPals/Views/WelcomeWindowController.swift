@@ -301,7 +301,7 @@ class WelcomeWindowController: NSWindowController {
         let iconSize: CGFloat = 48
         let iconImageView = NSImageView(frame: NSRect(x: (400 - iconSize) / 2, y: 185, width: iconSize, height: iconSize))
         iconImageView.imageScaling = .scaleProportionallyUpOrDown
-        iconImageView.contentTintColor = .controlAccentColor
+        iconImageView.contentTintColor = .labelColor  // White in dark mode, black in light mode
 
         if let symbolImage = NSImage(systemSymbolName: "cursorarrow.motionlines", accessibilityDescription: "Cursor with motion lines") {
             let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
