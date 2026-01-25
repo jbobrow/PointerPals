@@ -37,8 +37,7 @@ class NetworkManager {
         if let savedUserId = UserDefaults.standard.string(forKey: "PointerPals_UserId") {
             self.currentUserId = savedUserId
         } else {
-            let randomDigits = String(format: "%07d", Int.random(in: 0...9_999_999))
-            self.currentUserId = "user_\(randomDigits)"
+            self.currentUserId = "user_\(UUID().uuidString.prefix(8))"
             UserDefaults.standard.set(self.currentUserId, forKey: "PointerPals_UserId")
         }
 
