@@ -74,7 +74,7 @@ public partial class App : Application
             };
 
             using var fillBrush = new SolidBrush(System.Drawing.Color.Black);
-            using var outlinePen = new Pen(System.Drawing.Color.White, 1);
+            using var outlinePen = new System.Drawing.Pen(System.Drawing.Color.White, 1);
 
             g.FillPolygon(fillBrush, points);
             g.DrawPolygon(outlinePen, points);
