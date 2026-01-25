@@ -1,6 +1,10 @@
 # PointerPals 🖱️
 
-A macOS application that allows you to share your cursor position with others and see their cursors on your screen in real-time.
+A cross-platform application that allows you to share your cursor position with others and see their cursors on your screen in real-time.
+
+**Available for:**
+- **macOS** - Native Swift/SwiftUI app
+- **Windows** - Native C#/WPF app
 
 ## Features
 
@@ -16,24 +20,59 @@ A macOS application that allows you to share your cursor position with others an
 
 ```
 PointerPals/
-├── PointerPalsApp.swift          # Main app and menu bar UI
-├── CursorPublisher.swift         # Publishes local cursor position
-├── CursorManager.swift           # Manages subscribed cursor windows
-├── CursorWindow.swift            # Overlay window for remote cursors
-├── NetworkManager.swift          # Networking layer (needs implementation)
-├── Models/
-│   └── CursorData.swift          # Cursor position data model
-├── Info.plist                    # App configuration
-└── README.md                     # This file
+├── PointerPals/                     # macOS app (Swift/SwiftUI)
+│   ├── PointerPalsApp.swift         # Main app and menu bar UI
+│   ├── PointerPalsConfig.swift      # Configuration settings
+│   ├── Managers/
+│   │   ├── CursorPublisher.swift    # Publishes local cursor position
+│   │   ├── CursorManager.swift      # Manages subscribed cursor windows
+│   │   └── NetworkManager.swift     # WebSocket networking
+│   ├── Views/
+│   │   ├── CursorWindow.swift       # Overlay window for remote cursors
+│   │   └── WelcomeWindowController.swift
+│   └── Models/
+│       └── CursorData.swift         # Cursor position data model
+│
+├── PointerPalsWindows/              # Windows app (C#/WPF)
+│   ├── App.xaml(.cs)                # Main application with system tray
+│   ├── Config/
+│   │   └── PointerPalsConfig.cs     # Configuration settings
+│   ├── Managers/
+│   │   ├── CursorPublisher.cs       # Publishes local cursor position
+│   │   ├── CursorManager.cs         # Manages subscribed cursor windows
+│   │   └── NetworkManager.cs        # WebSocket networking
+│   ├── Views/
+│   │   ├── CursorOverlayWindow.xaml # Overlay window for remote cursors
+│   │   ├── SettingsWindow.xaml      # Settings dialog
+│   │   └── WelcomeWindow.xaml       # First-run setup wizard
+│   └── Models/
+│       └── CursorData.cs            # Cursor position data model
+│
+└── Server/                          # Node.js WebSocket server
+    ├── server.js                    # Main server code
+    ├── package.json
+    └── Dockerfile
 ```
 
-## Building the App
+## Building the Apps
 
-### Prerequisites
+### macOS Prerequisites
 
 - macOS 12.0 or later
 - Xcode 14.0 or later
 - Swift 5.7 or later
+
+### Windows Prerequisites
+
+- Windows 10 or later
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- (Optional) Visual Studio 2022 with .NET desktop development workload
+
+See [PointerPalsWindows/README.md](./PointerPalsWindows/README.md) for detailed Windows build instructions.
+
+---
+
+## macOS Setup
 
 ### Setup Instructions
 

@@ -1,0 +1,30 @@
+# Build outputs
+bin/
+obj/
+
+# IDE specific
+.vs/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+
+# Visual Studio
+.idea/
+*.rsuser
+*.DotSettings.user
+_ReSharper*/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Generated files
+*.generated.cs

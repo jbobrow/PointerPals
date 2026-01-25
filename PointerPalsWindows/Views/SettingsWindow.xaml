@@ -1,0 +1,164 @@
+<Window x:Class="PointerPals.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Pointer Pals Settings"
+        Height="420"
+        Width="420"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Username Section -->
+        <TextBlock Grid.Row="0"
+                   Text="Username:"
+                   FontSize="13"
+                   Margin="0,0,0,4"/>
+
+        <Grid Grid.Row="1" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="UsernameTextBox"
+                     Grid.Column="0"
+                     FontSize="13"
+                     Padding="8,6"
+                     MaxLength="32"
+                     TextChanged="UsernameTextBox_TextChanged"/>
+
+            <Button x:Name="SaveUsernameButton"
+                    Grid.Column="1"
+                    Content="Save"
+                    Width="70"
+                    Height="30"
+                    Margin="8,0,0,0"
+                    IsEnabled="False"
+                    Click="SaveUsername_Click"/>
+        </Grid>
+
+        <!-- Pointer ID Section -->
+        <TextBlock Grid.Row="2"
+                   Text="Your Pointer ID:"
+                   FontSize="13"
+                   Margin="0,0,0,4"/>
+
+        <TextBox x:Name="PointerIdTextBox"
+                 Grid.Row="3"
+                 FontSize="12"
+                 FontFamily="Consolas"
+                 IsReadOnly="True"
+                 Background="#F5F5F5"
+                 Padding="8,6"
+                 Margin="0,0,0,8"/>
+
+        <Button x:Name="CopyIdButton"
+                Grid.Row="4"
+                Content="Copy Pointer ID to Share with Pals"
+                Height="32"
+                Margin="0,0,0,16"
+                Click="CopyId_Click"/>
+
+        <!-- Separator -->
+        <Separator Grid.Row="5" Margin="0,0,0,16"/>
+
+        <!-- Display Preferences -->
+        <Grid Grid.Row="6" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Display Preferences"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+
+            <Button x:Name="DemoButton"
+                    Grid.Column="1"
+                    Content="Demo"
+                    Width="70"
+                    Height="26"
+                    Click="Demo_Click"/>
+        </Grid>
+
+        <CheckBox x:Name="ShowUsernamesCheckBox"
+                  Grid.Row="7"
+                  Content="Show Usernames"
+                  FontSize="13"
+                  Margin="0,0,0,12"
+                  Checked="ShowUsernames_Changed"
+                  Unchecked="ShowUsernames_Changed"/>
+
+        <!-- Cursor Size -->
+        <Grid Grid.Row="8" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="50"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Cursor Size:"
+                       FontSize="13"
+                       VerticalAlignment="Center"
+                       Margin="0,0,12,0"/>
+
+            <Slider x:Name="CursorSizeSlider"
+                    Grid.Column="1"
+                    Minimum="0.5"
+                    Maximum="1.0"
+                    TickFrequency="0.125"
+                    IsSnapToTickEnabled="True"
+                    ValueChanged="CursorSizeSlider_ValueChanged"/>
+
+            <TextBlock x:Name="CursorSizeLabel"
+                       Grid.Column="2"
+                       FontSize="13"
+                       Foreground="Gray"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Launch on Startup -->
+        <CheckBox x:Name="LaunchOnStartupCheckBox"
+                  Grid.Row="9"
+                  Content="Launch PointerPals on Startup"
+                  FontSize="13"
+                  VerticalAlignment="Top"
+                  Margin="0,0,0,12"
+                  Checked="LaunchOnStartup_Changed"
+                  Unchecked="LaunchOnStartup_Changed"/>
+
+        <!-- Server Configuration -->
+        <Button Content="Configure Server..."
+                Grid.Row="10"
+                Height="32"
+                HorizontalAlignment="Left"
+                Width="160"
+                Click="ConfigureServer_Click"/>
+
+        <!-- Done Button -->
+        <Button Content="Done"
+                Grid.Row="10"
+                Height="32"
+                HorizontalAlignment="Right"
+                Width="80"
+                IsDefault="True"
+                Click="Done_Click"/>
+    </Grid>
+</Window>
