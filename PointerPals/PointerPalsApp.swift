@@ -263,7 +263,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, Welcome
         alert.addButton(withTitle: "Cancel")
 
         let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        inputField.placeholderString = "PP_8675309"
+        inputField.placeholderString = "user_8675309"
         alert.accessoryView = inputField
         
         alert.window.initialFirstResponder = inputField
