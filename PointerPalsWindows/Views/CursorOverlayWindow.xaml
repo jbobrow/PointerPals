@@ -1,0 +1,46 @@
+<Window x:Class="PointerPals.Views.CursorOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CursorOverlay"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        IsHitTestVisible="False"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight">
+
+    <Grid>
+        <StackPanel x:Name="ContentPanel" Orientation="Vertical">
+            <!-- Cursor Image -->
+            <Canvas x:Name="CursorCanvas" Width="24" Height="36">
+                <!-- Custom drawn cursor arrow -->
+                <Path x:Name="CursorPath"
+                      Fill="Black"
+                      Stroke="White"
+                      StrokeThickness="1.5"
+                      Data="M 0,0 L 0,24 L 5.5,19.5 L 9,28 L 13,26.5 L 9.5,18 L 16,18 Z">
+                    <Path.RenderTransform>
+                        <ScaleTransform x:Name="CursorScaleTransform" ScaleX="1" ScaleY="1"/>
+                    </Path.RenderTransform>
+                </Path>
+            </Canvas>
+
+            <!-- Username Label -->
+            <Border x:Name="UsernameBorder"
+                    Background="#CC000000"
+                    CornerRadius="4"
+                    Padding="6,2"
+                    HorizontalAlignment="Left"
+                    Margin="0,-8,0,0"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="UsernameText"
+                           Foreground="White"
+                           FontSize="11"
+                           FontWeight="Medium"/>
+            </Border>
+        </StackPanel>
+    </Grid>
+</Window>
