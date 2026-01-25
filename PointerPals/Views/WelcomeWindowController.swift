@@ -297,12 +297,22 @@ class WelcomeWindowController: NSWindowController {
     }
 
     private func showReadyStep() {
-        // Icon
-        let iconLabel = NSTextField(labelWithString: "✨")
-        iconLabel.font = NSFont.systemFont(ofSize: 48)
-        iconLabel.alignment = .center
-        iconLabel.frame = NSRect(x: 0, y: 180, width: 400, height: 60)
-        contentContainer.addSubview(iconLabel)
+        // SF Symbol icon
+        let iconSize: CGFloat = 48
+        let iconImageView = NSImageView(frame: NSRect(x: (400 - iconSize) / 2, y: 185, width: iconSize, height: iconSize))
+        iconImageView.imageScaling = .scaleProportionallyUpOrDown
+        iconImageView.contentTintColor = .controlAccentColor
+
+        if let symbolImage = NSImage(systemSymbolName: "cursorarrow.motionlines", accessibilityDescription: "Cursor with motion lines") {
+            let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
+            iconImageView.image = symbolImage.withSymbolConfiguration(config)
+
+            // Add "draw" effect animation (appears layer by layer)
+            if #available(macOS 14.0, *) {
+                iconImageView.addSymbolEffect(.appear.byLayer)
+            }
+        }
+        contentContainer.addSubview(iconImageView)
 
         // Title
         let titleLabel = NSTextField(labelWithString: "You're All Set!")
