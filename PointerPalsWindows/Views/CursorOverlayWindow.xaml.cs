@@ -54,13 +54,9 @@ public partial class CursorOverlayWindow : Window
         _userId = userId;
         _cursorScale = cursorScale;
 
-        // Apply cursor scale
+        // Apply cursor scale to the path
         CursorScaleTransform.ScaleX = _cursorScale;
         CursorScaleTransform.ScaleY = _cursorScale;
-
-        // Update canvas size based on scale
-        CursorCanvas.Width = 24 * _cursorScale;
-        CursorCanvas.Height = 36 * _cursorScale;
 
         // Start invisible (will fade in on first update)
         Opacity = 0;

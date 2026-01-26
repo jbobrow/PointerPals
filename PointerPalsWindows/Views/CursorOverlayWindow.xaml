@@ -10,37 +10,36 @@
         ShowActivated="False"
         IsHitTestVisible="False"
         ResizeMode="NoResize"
-        SizeToContent="WidthAndHeight">
+        Width="150"
+        Height="80">
 
-    <Grid>
-        <StackPanel x:Name="ContentPanel" Orientation="Vertical">
-            <!-- Cursor Image -->
-            <Canvas x:Name="CursorCanvas" Width="24" Height="36">
-                <!-- Custom drawn cursor arrow -->
-                <Path x:Name="CursorPath"
-                      Fill="Black"
-                      Stroke="White"
-                      StrokeThickness="1.5"
-                      Data="M 0,0 L 0,24 L 5.5,19.5 L 9,28 L 13,26.5 L 9.5,18 L 16,18 Z">
-                    <Path.RenderTransform>
-                        <ScaleTransform x:Name="CursorScaleTransform" ScaleX="1" ScaleY="1"/>
-                    </Path.RenderTransform>
-                </Path>
-            </Canvas>
+    <!-- Use Canvas for absolute positioning - cursor tip is always at (0,0) -->
+    <Canvas>
+        <!-- Cursor arrow at (0,0) - tip is at top-left of window -->
+        <Path x:Name="CursorPath"
+              Canvas.Left="0"
+              Canvas.Top="0"
+              Fill="Black"
+              Stroke="White"
+              StrokeThickness="1.5"
+              Data="M 0,0 L 0,24 L 5.5,19.5 L 9,28 L 13,26.5 L 9.5,18 L 16,18 Z">
+            <Path.RenderTransform>
+                <ScaleTransform x:Name="CursorScaleTransform" ScaleX="1" ScaleY="1"/>
+            </Path.RenderTransform>
+        </Path>
 
-            <!-- Username Label -->
-            <Border x:Name="UsernameBorder"
-                    Background="#CC000000"
-                    CornerRadius="4"
-                    Padding="6,2"
-                    HorizontalAlignment="Left"
-                    Margin="0,-8,0,0"
-                    Visibility="Collapsed">
-                <TextBlock x:Name="UsernameText"
-                           Foreground="White"
-                           FontSize="11"
-                           FontWeight="Medium"/>
-            </Border>
-        </StackPanel>
-    </Grid>
+        <!-- Username label positioned below cursor -->
+        <Border x:Name="UsernameBorder"
+                Canvas.Left="0"
+                Canvas.Top="30"
+                Background="#CC000000"
+                CornerRadius="4"
+                Padding="6,2"
+                Visibility="Collapsed">
+            <TextBlock x:Name="UsernameText"
+                       Foreground="White"
+                       FontSize="11"
+                       FontWeight="Medium"/>
+        </Border>
+    </Canvas>
 </Window>
