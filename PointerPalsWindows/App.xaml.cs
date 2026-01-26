@@ -50,6 +50,13 @@ public partial class App : Application
             ContextMenu = CreateContextMenu()
         };
 
+        // Left-click opens the menu (same as right-click)
+        _taskbarIcon.TrayLeftMouseUp += (_, _) =>
+        {
+            _taskbarIcon.ContextMenu.IsOpen = true;
+        };
+
+        // Double-click opens settings
         _taskbarIcon.TrayMouseDoubleClick += (_, _) => ShowSettings();
     }
 
@@ -224,6 +231,12 @@ public partial class App : Application
             {
                 var welcomeWindow = new WelcomeWindow(_networkManager!);
                 welcomeWindow.ShowDialog();
+
+                // Subscribe to first pal if entered
+                if (!string.IsNullOrWhiteSpace(welcomeWindow.FirstPalId))
+                {
+                    _cursorManager?.Subscribe(welcomeWindow.FirstPalId);
+                }
             }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
     }

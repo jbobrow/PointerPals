@@ -14,6 +14,7 @@ public partial class SettingsWindow : Window
     private DispatcherTimer? _demoTimer;
     private int _demoFrame;
     private const int TotalDemoFrames = 360; // 6 seconds at 60fps
+    private bool _isInitialized;
 
     public SettingsWindow(NetworkManager networkManager, CursorManager cursorManager)
     {
@@ -23,13 +24,16 @@ public partial class SettingsWindow : Window
         _cursorManager = cursorManager;
         _originalUsername = networkManager.CurrentUsername;
 
-        // Initialize controls
+        // Initialize controls (events will be ignored until _isInitialized is true)
         UsernameTextBox.Text = networkManager.CurrentUsername;
         PointerIdTextBox.Text = networkManager.CurrentUserId;
         ShowUsernamesCheckBox.IsChecked = PointerPalsConfig.ShowUsernames;
         CursorSizeSlider.Value = PointerPalsConfig.CursorScale;
         CursorSizeLabel.Text = $"{(int)(PointerPalsConfig.CursorScale * 100)}%";
         LaunchOnStartupCheckBox.IsChecked = PointerPalsConfig.LaunchOnStartup;
+
+        // Done initializing - events can now take effect
+        _isInitialized = true;
     }
 
     private void UsernameTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -68,6 +72,7 @@ public partial class SettingsWindow : Window
 
     private void ShowUsernames_Changed(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized) return;
         _cursorManager.SetUsernameVisibility(ShowUsernamesCheckBox.IsChecked == true);
     }
 
@@ -76,12 +81,16 @@ public partial class SettingsWindow : Window
         if (CursorSizeLabel != null)
         {
             CursorSizeLabel.Text = $"{(int)(e.NewValue * 100)}%";
-            _cursorManager?.SetCursorScale(e.NewValue);
+            if (_isInitialized)
+            {
+                _cursorManager?.SetCursorScale(e.NewValue);
+            }
         }
     }
 
     private void LaunchOnStartup_Changed(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized) return;
         PointerPalsConfig.LaunchOnStartup = LaunchOnStartupCheckBox.IsChecked == true;
     }
 

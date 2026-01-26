@@ -12,6 +12,11 @@ public partial class WelcomeWindow : Window
     private int _currentStep = 1;
     private const int TotalSteps = 4;
 
+    /// <summary>
+    /// The first pal ID entered by the user (if any)
+    /// </summary>
+    public string? FirstPalId { get; private set; }
+
     public WelcomeWindow(NetworkManager networkManager)
     {
         InitializeComponent();
@@ -96,8 +101,8 @@ public partial class WelcomeWindow : Window
         Step4Panel.Visibility = Visibility.Collapsed;
 
         // Reset all dots
-        var inactiveColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#CCCCCC"));
-        var activeColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#007AFF"));
+        var inactiveColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E0E0E0")!);
+        var activeColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#007AFF")!);
 
         Step1Dot.Fill = inactiveColor;
         Step2Dot.Fill = inactiveColor;
@@ -134,6 +139,7 @@ public partial class WelcomeWindow : Window
                 Step4Dot.Fill = activeColor;
                 NextButton.Content = "Finish";
                 BackButton.Visibility = Visibility.Visible;
+                FirstPalIdTextBox.Focus();
                 break;
         }
     }
@@ -142,6 +148,13 @@ public partial class WelcomeWindow : Window
     {
         // Save launch on startup preference
         PointerPalsConfig.LaunchOnStartup = LaunchOnStartupCheckBox.IsChecked == true;
+
+        // Store the first pal ID if entered
+        var palId = FirstPalIdTextBox.Text.Trim();
+        if (!string.IsNullOrEmpty(palId))
+        {
+            FirstPalId = palId;
+        }
 
         Close();
     }

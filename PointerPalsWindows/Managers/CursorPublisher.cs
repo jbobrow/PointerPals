@@ -15,6 +15,12 @@ public class CursorPublisher : IDisposable
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out POINT lpPoint);
 
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    private const int SM_CXSCREEN = 0;
+    private const int SM_CYSCREEN = 1;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
     {
@@ -82,15 +88,14 @@ public class CursorPublisher : IDisposable
             }
         }
 
-        // Get virtual screen bounds (supports multi-monitor)
-        var screenLeft = SystemParameters.VirtualScreenLeft;
-        var screenTop = SystemParameters.VirtualScreenTop;
-        var screenWidth = SystemParameters.VirtualScreenWidth;
-        var screenHeight = SystemParameters.VirtualScreenHeight;
+        // Get physical screen dimensions in pixels (matches GetCursorPos units)
+        // Using GetSystemMetrics for primary screen - for multi-monitor would need more work
+        var screenWidth = (double)GetSystemMetrics(SM_CXSCREEN);
+        var screenHeight = (double)GetSystemMetrics(SM_CYSCREEN);
 
         // Normalize coordinates (0.0 to 1.0)
-        var normalizedX = (point.X - screenLeft) / screenWidth;
-        var normalizedY = 1.0 - ((point.Y - screenTop) / screenHeight); // Flip Y axis (Windows Y is top-down)
+        var normalizedX = point.X / screenWidth;
+        var normalizedY = 1.0 - (point.Y / screenHeight); // Flip Y axis (Windows Y is top-down)
 
         // Clamp coordinates if configured
         if (PointerPalsConfig.ClampCoordinates)
