@@ -27,14 +27,28 @@ public partial class CursorOverlayWindow : Window
     [DllImport("user32.dll")]
     private static extern int GetSystemMetrics(int nIndex);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    [DllImport("gdi32.dll")]
+    private static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
+
+    private const int LOGPIXELSX = 88;
+
     private readonly string _userId;
     private readonly double _cursorScale;
     private string? _currentUsername;
     private bool _showUsername = true;
-    private double _dpiScale = 1.0;
+    private readonly double _dpiScale;
 
     public CursorOverlayWindow(string userId, double cursorScale = PointerPalsConfig.DefaultCursorScale)
     {
+        // Get DPI scale before InitializeComponent
+        _dpiScale = GetDpiScale();
+
         InitializeComponent();
 
         _userId = userId;
@@ -51,13 +65,31 @@ public partial class CursorOverlayWindow : Window
         // Start invisible (will fade in on first update)
         Opacity = 0;
 
-        // Make window click-through
+        // Make window click-through when loaded
         Loaded += OnLoaded;
 
         if (PointerPalsConfig.DebugLogging)
         {
-            Console.WriteLine($"Created cursor window for {userId}");
+            Console.WriteLine($"Created cursor window for {userId}, DPI scale: {_dpiScale}");
         }
+    }
+
+    private static double GetDpiScale()
+    {
+        var hdc = GetDC(IntPtr.Zero);
+        if (hdc != IntPtr.Zero)
+        {
+            try
+            {
+                var dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+                return dpi / 96.0; // 96 DPI is the baseline (100%)
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, hdc);
+            }
+        }
+        return 1.0;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -66,13 +98,6 @@ public partial class CursorOverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW);
-
-        // Get DPI scale factor for coordinate conversion
-        var source = PresentationSource.FromVisual(this);
-        if (source?.CompositionTarget != null)
-        {
-            _dpiScale = source.CompositionTarget.TransformToDevice.M11;
-        }
     }
 
     public void UpdateUsername(string? username)
