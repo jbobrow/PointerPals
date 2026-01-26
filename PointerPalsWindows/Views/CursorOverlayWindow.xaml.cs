@@ -15,6 +15,8 @@ public partial class CursorOverlayWindow : Window
     private const int WS_EX_TRANSPARENT = 0x00000020;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int GWL_EXSTYLE = -20;
+    private const int SM_CXSCREEN = 0;
+    private const int SM_CYSCREEN = 1;
 
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hwnd, int index);
@@ -22,10 +24,14 @@ public partial class CursorOverlayWindow : Window
     [DllImport("user32.dll")]
     private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
     private readonly string _userId;
     private readonly double _cursorScale;
     private string? _currentUsername;
     private bool _showUsername = true;
+    private double _dpiScale = 1.0;
 
     public CursorOverlayWindow(string userId, double cursorScale = PointerPalsConfig.DefaultCursorScale)
     {
@@ -60,6 +66,13 @@ public partial class CursorOverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         var extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW);
+
+        // Get DPI scale factor for coordinate conversion
+        var source = PresentationSource.FromVisual(this);
+        if (source?.CompositionTarget != null)
+        {
+            _dpiScale = source.CompositionTarget.TransformToDevice.M11;
+        }
     }
 
     public void UpdateUsername(string? username)
@@ -94,16 +107,19 @@ public partial class CursorOverlayWindow : Window
 
     public void UpdatePosition(double normalizedX, double normalizedY)
     {
-        // Get virtual screen bounds (supports multi-monitor)
-        var screenLeft = SystemParameters.VirtualScreenLeft;
-        var screenTop = SystemParameters.VirtualScreenTop;
-        var screenWidth = SystemParameters.VirtualScreenWidth;
-        var screenHeight = SystemParameters.VirtualScreenHeight;
+        // Get physical screen dimensions in pixels (matches publisher's normalization)
+        var screenWidthPx = (double)GetSystemMetrics(SM_CXSCREEN);
+        var screenHeightPx = (double)GetSystemMetrics(SM_CYSCREEN);
 
-        // Convert normalized coordinates to screen coordinates
+        // Convert normalized coordinates to physical pixel coordinates
         // Y is flipped because Windows Y is top-down, but normalized Y is bottom-up
-        var screenX = screenLeft + (normalizedX * screenWidth);
-        var screenY = screenTop + ((1.0 - normalizedY) * screenHeight);
+        var pixelX = normalizedX * screenWidthPx;
+        var pixelY = (1.0 - normalizedY) * screenHeightPx;
+
+        // Convert physical pixels to WPF device-independent units (DIUs)
+        // WPF Window.Left/Top use DIUs, not physical pixels
+        var screenX = pixelX / _dpiScale;
+        var screenY = pixelY / _dpiScale;
 
         // Apply position with animation
         var duration = TimeSpan.FromSeconds(PointerPalsConfig.CursorAnimationDuration);

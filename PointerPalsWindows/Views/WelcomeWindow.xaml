@@ -2,11 +2,12 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Welcome to PointerPals"
-        Height="480"
-        Width="500"
+        Height="500"
+        Width="520"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        ShowInTaskbar="True">
+        ShowInTaskbar="True"
+        Background="White">
 
     <Grid>
         <!-- Step Navigation -->
@@ -16,136 +17,171 @@
         </Grid.RowDefinitions>
 
         <!-- Content Pages -->
-        <Grid Grid.Row="0" Margin="30">
+        <Grid Grid.Row="0" Margin="40,30,40,20">
 
             <!-- Step 1: Welcome -->
             <StackPanel x:Name="Step1Panel" Visibility="Visible" VerticalAlignment="Center">
+                <!-- Cursor Icon -->
+                <Viewbox Width="80" Height="80" Margin="0,0,0,24">
+                    <Canvas Width="24" Height="36">
+                        <Path Fill="#007AFF" Stroke="White" StrokeThickness="1.5"
+                              Data="M 0,0 L 0,24 L 5.5,19.5 L 9,28 L 13,26.5 L 9.5,18 L 16,18 Z"/>
+                    </Canvas>
+                </Viewbox>
+
                 <TextBlock Text="Welcome to PointerPals!"
                            FontSize="28"
-                           FontWeight="Bold"
+                           FontWeight="SemiBold"
                            HorizontalAlignment="Center"
-                           Margin="0,0,0,20"/>
+                           Margin="0,0,0,16"/>
 
-                <TextBlock Text="Share your cursor with friends and collaborate in real-time."
-                           FontSize="15"
+                <TextBlock Text="Share your cursor with friends and collaborate in real-time. Perfect for remote pair programming, design reviews, and online tutoring."
+                           FontSize="14"
                            TextWrapping="Wrap"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"
-                           Margin="0,0,0,30"/>
+                           Foreground="#666666"
+                           LineHeight="22"
+                           Margin="0,0,0,24"/>
 
-                <!-- Cursor animation placeholder -->
-                <Border Background="#F0F0F0"
+                <Border Background="#F8F9FA"
                         CornerRadius="8"
-                        Height="120"
-                        Margin="40,0">
-                    <TextBlock Text="PointerPals"
-                               FontSize="24"
-                               FontWeight="Light"
-                               Foreground="Gray"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center"/>
+                        Padding="20,16"
+                        Margin="20,0">
+                    <StackPanel>
+                        <TextBlock Text="How it works:" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,12"/>
+                        <TextBlock Text="1. Share your Pointer ID with friends" FontSize="13" Foreground="#555" Margin="0,0,0,6"/>
+                        <TextBlock Text="2. Add their Pointer IDs to see their cursors" FontSize="13" Foreground="#555" Margin="0,0,0,6"/>
+                        <TextBlock Text="3. Collaborate with cursors visible on screen" FontSize="13" Foreground="#555"/>
+                    </StackPanel>
                 </Border>
             </StackPanel>
 
             <!-- Step 2: Set Username -->
             <StackPanel x:Name="Step2Panel" Visibility="Collapsed" VerticalAlignment="Center">
                 <TextBlock Text="What should we call you?"
-                           FontSize="24"
-                           FontWeight="Bold"
+                           FontSize="26"
+                           FontWeight="SemiBold"
                            HorizontalAlignment="Center"
-                           Margin="0,0,0,20"/>
+                           Margin="0,0,0,16"/>
 
-                <TextBlock Text="Your username will be shown to your pals above your cursor."
+                <TextBlock Text="Your username will be shown to your pals above your cursor so they know who's pointing."
                            FontSize="14"
                            TextWrapping="Wrap"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"
-                           Foreground="Gray"
-                           Margin="0,0,0,30"/>
+                           Foreground="#666666"
+                           LineHeight="22"
+                           Margin="0,0,0,32"/>
 
                 <TextBox x:Name="UsernameTextBox"
-                         FontSize="16"
-                         Padding="12,10"
+                         FontSize="18"
+                         Padding="14,12"
                          MaxLength="32"
-                         Width="280"
+                         Width="300"
                          HorizontalAlignment="Center"
+                         HorizontalContentAlignment="Center"
                          TextChanged="UsernameTextBox_TextChanged"/>
 
                 <TextBlock x:Name="UsernameHint"
                            Text="Enter a username (max 32 characters)"
                            FontSize="12"
-                           Foreground="Gray"
+                           Foreground="#999999"
                            HorizontalAlignment="Center"
-                           Margin="0,8,0,0"/>
+                           Margin="0,12,0,0"/>
             </StackPanel>
 
             <!-- Step 3: Your Pointer ID -->
             <StackPanel x:Name="Step3Panel" Visibility="Collapsed" VerticalAlignment="Center">
                 <TextBlock Text="Your Pointer ID"
-                           FontSize="24"
-                           FontWeight="Bold"
+                           FontSize="26"
+                           FontWeight="SemiBold"
                            HorizontalAlignment="Center"
-                           Margin="0,0,0,20"/>
+                           Margin="0,0,0,16"/>
 
-                <TextBlock Text="Share this ID with your pals so they can see your cursor!"
+                <TextBlock Text="This is your unique ID. Share it with friends so they can see your cursor on their screen!"
                            FontSize="14"
                            TextWrapping="Wrap"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"
-                           Foreground="Gray"
-                           Margin="0,0,0,30"/>
+                           Foreground="#666666"
+                           LineHeight="22"
+                           Margin="0,0,0,32"/>
 
-                <Border Background="#F5F5F5"
-                        CornerRadius="4"
-                        Padding="16,12"
+                <Border Background="#F0F4F8"
+                        CornerRadius="8"
+                        Padding="24,16"
                         HorizontalAlignment="Center"
-                        Margin="0,0,0,16">
+                        Margin="0,0,0,20"
+                        BorderBrush="#E0E4E8"
+                        BorderThickness="1">
                     <TextBlock x:Name="PointerIdText"
-                               FontSize="18"
+                               FontSize="20"
                                FontFamily="Consolas"
+                               FontWeight="Medium"
+                               Foreground="#007AFF"
                                HorizontalAlignment="Center"/>
                 </Border>
 
                 <Button x:Name="CopyIdButton"
                         Content="Copy to Clipboard"
-                        Width="160"
-                        Height="36"
+                        Width="180"
+                        Height="40"
+                        FontSize="14"
                         HorizontalAlignment="Center"
-                        Click="CopyId_Click"/>
+                        Click="CopyId_Click"
+                        Background="#007AFF"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Cursor="Hand"/>
+
+                <TextBlock Text="You can always find your ID in Settings later."
+                           FontSize="12"
+                           Foreground="#999999"
+                           HorizontalAlignment="Center"
+                           Margin="0,16,0,0"/>
             </StackPanel>
 
-            <!-- Step 4: Launch on Startup -->
+            <!-- Step 4: Add Your First Pal -->
             <StackPanel x:Name="Step4Panel" Visibility="Collapsed" VerticalAlignment="Center">
-                <TextBlock Text="One more thing..."
-                           FontSize="24"
-                           FontWeight="Bold"
+                <TextBlock Text="Add Your First Pal"
+                           FontSize="26"
+                           FontWeight="SemiBold"
                            HorizontalAlignment="Center"
-                           Margin="0,0,0,20"/>
+                           Margin="0,0,0,16"/>
 
-                <TextBlock Text="Would you like PointerPals to start automatically when you log in?"
+                <TextBlock Text="Got a friend's Pointer ID? Enter it below to start seeing their cursor. You can skip this and add pals later from the system tray menu."
                            FontSize="14"
                            TextWrapping="Wrap"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"
-                           Foreground="Gray"
-                           Margin="0,0,0,30"/>
+                           Foreground="#666666"
+                           LineHeight="22"
+                           Margin="0,0,0,32"/>
+
+                <TextBox x:Name="FirstPalIdTextBox"
+                         FontSize="16"
+                         Padding="14,12"
+                         Width="300"
+                         HorizontalAlignment="Center"
+                         HorizontalContentAlignment="Center"/>
+
+                <TextBlock Text="Enter your pal's Pointer ID (optional)"
+                           FontSize="12"
+                           Foreground="#999999"
+                           HorizontalAlignment="Center"
+                           Margin="0,12,0,24"/>
 
                 <CheckBox x:Name="LaunchOnStartupCheckBox"
-                          Content="Launch PointerPals on Startup"
-                          FontSize="14"
+                          Content="Launch PointerPals when Windows starts"
+                          FontSize="13"
                           HorizontalAlignment="Center"
                           IsChecked="True"/>
-
-                <TextBlock Text="You can always change this later in Settings."
-                           FontSize="12"
-                           Foreground="Gray"
-                           HorizontalAlignment="Center"
-                           Margin="0,20,0,0"/>
             </StackPanel>
         </Grid>
 
         <!-- Navigation Buttons -->
-        <Grid Grid.Row="1" Margin="30,0,30,30">
+        <Grid Grid.Row="1" Margin="40,0,40,30">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -156,17 +192,18 @@
             <StackPanel Grid.Column="0"
                         Orientation="Horizontal"
                         VerticalAlignment="Center">
-                <Ellipse x:Name="Step1Dot" Width="8" Height="8" Fill="#007AFF" Margin="0,0,8,0"/>
-                <Ellipse x:Name="Step2Dot" Width="8" Height="8" Fill="#CCCCCC" Margin="0,0,8,0"/>
-                <Ellipse x:Name="Step3Dot" Width="8" Height="8" Fill="#CCCCCC" Margin="0,0,8,0"/>
-                <Ellipse x:Name="Step4Dot" Width="8" Height="8" Fill="#CCCCCC"/>
+                <Ellipse x:Name="Step1Dot" Width="10" Height="10" Fill="#007AFF" Margin="0,0,8,0"/>
+                <Ellipse x:Name="Step2Dot" Width="10" Height="10" Fill="#E0E0E0" Margin="0,0,8,0"/>
+                <Ellipse x:Name="Step3Dot" Width="10" Height="10" Fill="#E0E0E0" Margin="0,0,8,0"/>
+                <Ellipse x:Name="Step4Dot" Width="10" Height="10" Fill="#E0E0E0"/>
             </StackPanel>
 
             <Button x:Name="BackButton"
                     Grid.Column="1"
                     Content="Back"
-                    Width="80"
-                    Height="36"
+                    Width="90"
+                    Height="40"
+                    FontSize="14"
                     Margin="0,0,12,0"
                     Visibility="Collapsed"
                     Click="Back_Click"/>
@@ -174,9 +211,14 @@
             <Button x:Name="NextButton"
                     Grid.Column="2"
                     Content="Get Started"
-                    Width="120"
-                    Height="36"
-                    Click="Next_Click"/>
+                    Width="130"
+                    Height="40"
+                    FontSize="14"
+                    Click="Next_Click"
+                    Background="#007AFF"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Cursor="Hand"/>
         </Grid>
     </Grid>
 </Window>
