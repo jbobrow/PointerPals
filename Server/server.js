@@ -5,7 +5,11 @@ const WebSocket = require('ws');
 const PORT = process.env.PORT || 8080;
 const wss = new WebSocket.Server({ port: PORT });
 
-// Store active connections: userId -> {ws: WebSocket, username: String}
+// Ping/pong keepalive configuration
+const PING_INTERVAL = 30000;  // Send ping every 30 seconds
+const PONG_TIMEOUT = 10000;   // Consider dead if no pong within 10 seconds
+
+// Store active connections: userId -> {ws: WebSocket, username: String, isAlive: Boolean}
 const clients = new Map();
 
 // Store subscriptions: userId -> Set<subscribedToUserIds>
@@ -15,8 +19,14 @@ console.log(`PointerPals WebSocket Server running on port ${PORT}`);
 
 wss.on('connection', (ws, req) => {
   console.log('New connection from:', req.socket.remoteAddress);
-  
+
   let currentUserId = null;
+
+  // Mark connection as alive initially and on pong
+  ws.isAlive = true;
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
 
   ws.on('message', (message) => {
     try {
@@ -27,7 +37,7 @@ wss.on('connection', (ws, req) => {
           // Register a new user
           currentUserId = data.userId;
           const username = data.username || 'User';
-          clients.set(currentUserId, { ws, username });
+          clients.set(currentUserId, { ws, username, isAlive: true });
 
           if (!subscriptions.has(currentUserId)) {
             subscriptions.set(currentUserId, new Set());
@@ -109,6 +119,13 @@ wss.on('connection', (ws, req) => {
           }
           break;
 
+        case 'ping':
+          // Application-level ping (for clients that can't use WebSocket ping frames)
+          ws.send(JSON.stringify({
+            type: 'pong'
+          }));
+          break;
+
         case 'update_username':
           // Update username and notify subscribers
           if (!currentUserId) {
@@ -174,7 +191,27 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// Periodic cleanup of stale connections
+// Ping/pong keepalive - send pings to detect dead connections
+const pingInterval = setInterval(() => {
+  clients.forEach((client, userId) => {
+    if (client.ws) {
+      if (client.ws.isAlive === false) {
+        // Client didn't respond to last ping, terminate connection
+        console.log(`Terminating unresponsive client: ${userId}`);
+        client.ws.terminate();
+        clients.delete(userId);
+        subscriptions.delete(userId);
+        return;
+      }
+
+      // Mark as not alive and send ping
+      client.ws.isAlive = false;
+      client.ws.ping();
+    }
+  });
+}, PING_INTERVAL);
+
+// Periodic cleanup of stale connections (as backup)
 setInterval(() => {
   clients.forEach((client, userId) => {
     if (client.ws && client.ws.readyState === WebSocket.CLOSED) {
@@ -188,11 +225,13 @@ setInterval(() => {
 // Handle server shutdown gracefully
 process.on('SIGINT', () => {
   console.log('\nShutting down server...');
-  
+
+  clearInterval(pingInterval);
+
   wss.clients.forEach((ws) => {
     ws.close(1000, 'Server shutting down');
   });
-  
+
   wss.close(() => {
     console.log('Server closed');
     process.exit(0);

@@ -21,6 +21,8 @@ class NetworkManager {
     private let serverURL: String
     private var isConnected = false
     private var reconnectTimer: Timer?
+    private var pingTimer: Timer?
+    private var lastPongTime: Date = Date()
 
     var cursorUpdatePublisher: AnyPublisher<CursorData, Never> {
         cursorUpdateSubject.eraseToAnyPublisher()
@@ -76,12 +78,15 @@ class NetworkManager {
         
         // Register with server
         registerUser()
-        
+
         // Start receiving messages
         receiveMessage()
-        
+
         // Monitor connection health
         scheduleConnectionCheck()
+
+        // Start ping keepalive
+        startPingTimer()
     }
     
     private func registerUser() {
@@ -291,10 +296,49 @@ class NetworkManager {
             self?.checkConnection()
         }
     }
-    
+
     private func checkConnection() {
         if !isConnected {
             attemptReconnect()
+            return
+        }
+
+        // Check if pong timeout has been exceeded
+        let timeSinceLastPong = Date().timeIntervalSince(lastPongTime)
+        if timeSinceLastPong > PointerPalsConfig.pongTimeout + PointerPalsConfig.pingInterval {
+            print("Pong timeout exceeded (\(timeSinceLastPong)s since last pong), reconnecting...")
+            isConnected = false
+            attemptReconnect()
+        }
+    }
+
+    private func startPingTimer() {
+        pingTimer?.invalidate()
+        lastPongTime = Date()
+
+        pingTimer = Timer.scheduledTimer(
+            withTimeInterval: PointerPalsConfig.pingInterval,
+            repeats: true
+        ) { [weak self] _ in
+            self?.sendPing()
+        }
+    }
+
+    private func sendPing() {
+        guard isConnected else { return }
+
+        webSocketTask?.sendPing { [weak self] error in
+            if let error = error {
+                print("Ping failed: \(error)")
+                self?.isConnected = false
+                self?.attemptReconnect()
+            } else {
+                // Pong received successfully
+                self?.lastPongTime = Date()
+                if PointerPalsConfig.debugLogging {
+                    print("Pong received")
+                }
+            }
         }
     }
     
@@ -302,15 +346,17 @@ class NetworkManager {
         if PointerPalsConfig.debugLogging {
             print("Attempting to reconnect...")
         }
+        pingTimer?.invalidate()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + PointerPalsConfig.reconnectionInterval) { [weak self] in
             self?.connectToServer()
         }
     }
-    
+
     deinit {
         reconnectTimer?.invalidate()
+        pingTimer?.invalidate()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
     }
     
