@@ -15,6 +15,8 @@ public class NetworkManager : IDisposable
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly HashSet<string> _subscriptions = new();
     private System.Timers.Timer? _reconnectTimer;
+    private System.Timers.Timer? _pingTimer;
+    private DateTime _lastPongTime = DateTime.UtcNow;
     private bool _isConnected;
     private bool _isDisposed;
 
@@ -70,6 +72,9 @@ public class NetworkManager : IDisposable
             _webSocket?.Dispose();
             _webSocket = new ClientWebSocket();
 
+            // Configure keepalive to prevent NAT/firewall timeouts
+            _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(PointerPalsConfig.PingInterval);
+
             var serverUrl = PointerPalsConfig.ServerURL;
             Console.WriteLine($"Connecting to WebSocket server at: {serverUrl}");
 
@@ -93,6 +98,9 @@ public class NetworkManager : IDisposable
 
             // Start connection health check
             StartConnectionCheck();
+
+            // Start ping keepalive timer
+            StartPingTimer();
         }
         catch (Exception ex)
         {
@@ -148,6 +156,8 @@ public class NetworkManager : IDisposable
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    // Any received message indicates the connection is alive
+                    _lastPongTime = DateTime.UtcNow;
                     HandleMessage(text);
                 }
             }
@@ -181,6 +191,14 @@ public class NetworkManager : IDisposable
             {
                 case "registered":
                     Console.WriteLine("Successfully registered with server");
+                    break;
+
+                case "pong":
+                    // Response to our application-level ping
+                    if (PointerPalsConfig.DebugLogging)
+                    {
+                        Console.WriteLine("Pong received");
+                    }
                     break;
 
                 case "cursor_update":
@@ -366,17 +384,74 @@ public class NetworkManager : IDisposable
         _reconnectTimer = new System.Timers.Timer(PointerPalsConfig.ConnectionCheckInterval * 1000);
         _reconnectTimer.Elapsed += (_, _) =>
         {
-            if (!_isConnected && !_isDisposed)
+            if (_isDisposed) return;
+
+            if (!_isConnected)
             {
                 _ = ConnectAsync();
+                return;
+            }
+
+            // Check if pong timeout has been exceeded
+            var timeSinceLastPong = (DateTime.UtcNow - _lastPongTime).TotalSeconds;
+            if (timeSinceLastPong > PointerPalsConfig.PongTimeout + PointerPalsConfig.PingInterval)
+            {
+                Console.WriteLine($"Pong timeout exceeded ({timeSinceLastPong:F1}s since last activity), reconnecting...");
+                _isConnected = false;
+                ConnectionStateChanged?.Invoke(false);
+                ScheduleReconnect();
             }
         };
         _reconnectTimer.Start();
     }
 
+    private void StartPingTimer()
+    {
+        _pingTimer?.Stop();
+        _lastPongTime = DateTime.UtcNow;
+
+        _pingTimer = new System.Timers.Timer(PointerPalsConfig.PingInterval * 1000);
+        _pingTimer.Elapsed += async (_, _) =>
+        {
+            await SendPingAsync();
+        };
+        _pingTimer.Start();
+    }
+
+    private async Task SendPingAsync()
+    {
+        if (!_isConnected || _webSocket?.State != WebSocketState.Open) return;
+
+        try
+        {
+            // Send an application-level ping message
+            // The server will echo this back, updating our lastPongTime
+            var message = new Dictionary<string, object>
+            {
+                ["action"] = "ping"
+            };
+
+            await SendMessageAsync(message);
+
+            if (PointerPalsConfig.DebugLogging)
+            {
+                Console.WriteLine("Ping sent");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ping failed: {ex.Message}");
+            _isConnected = false;
+            ConnectionStateChanged?.Invoke(false);
+            ScheduleReconnect();
+        }
+    }
+
     private void ScheduleReconnect()
     {
         if (_isDisposed) return;
+
+        _pingTimer?.Stop();
 
         Console.WriteLine($"Scheduling reconnect in {PointerPalsConfig.ReconnectionInterval} seconds...");
         Task.Delay(TimeSpan.FromSeconds(PointerPalsConfig.ReconnectionInterval))
@@ -390,6 +465,8 @@ public class NetworkManager : IDisposable
 
         _reconnectTimer?.Stop();
         _reconnectTimer?.Dispose();
+        _pingTimer?.Stop();
+        _pingTimer?.Dispose();
         _cancellationTokenSource?.Cancel();
         _webSocket?.Dispose();
     }

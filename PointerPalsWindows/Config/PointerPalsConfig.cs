@@ -133,6 +133,17 @@ public static class PointerPalsConfig
     public const double ConnectionCheckInterval = 5.0;
 
     /// <summary>
+    /// Ping interval (seconds) to keep WebSocket connection alive
+    /// Sends a ping frame periodically to prevent NAT/firewall timeouts
+    /// </summary>
+    public const double PingInterval = 30.0;
+
+    /// <summary>
+    /// Pong timeout (seconds) - if no pong received within this time after ping, reconnect
+    /// </summary>
+    public const double PongTimeout = 10.0;
+
+    /// <summary>
     /// Maximum number of simultaneous subscriptions (0 = unlimited)
     /// </summary>
     public const int MaxSubscriptions = 0;

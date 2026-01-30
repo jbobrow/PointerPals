@@ -119,9 +119,16 @@ struct PointerPalsConfig {
     
     /// Reconnection interval (seconds) if connection lost
     static let reconnectionInterval: TimeInterval = 2.0
-    
+
     /// Connection health check interval (seconds)
     static let connectionCheckInterval: TimeInterval = 5.0
+
+    /// Ping interval (seconds) to keep WebSocket connection alive
+    /// Sends a ping frame periodically to prevent NAT/firewall timeouts
+    static let pingInterval: TimeInterval = 30.0
+
+    /// Pong timeout (seconds) - if no pong received within this time after ping, reconnect
+    static let pongTimeout: TimeInterval = 10.0
     
     /// Maximum number of simultaneous subscriptions
     /// Set to 0 for unlimited
