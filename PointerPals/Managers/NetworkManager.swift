@@ -20,6 +20,8 @@ class NetworkManager {
     private var webSocketTask: URLSessionWebSocketTask?
     private let serverURL: String
     private var isConnected = false
+    private let iso8601Formatter = ISO8601DateFormatter()
+    private var isReconnecting = false
     private var reconnectTimer: Timer?
     private var pingTimer: Timer?
     private var lastPongTime: Date = Date()
@@ -146,6 +148,7 @@ class NetworkManager {
         switch type {
         case "registered":
             isConnected = true
+            isReconnecting = false
             print("Successfully registered with server")
             
             // Re-subscribe to any existing subscriptions
@@ -206,7 +209,7 @@ class NetworkManager {
 
         let timestamp: Date
         if let timestampString = dict["timestamp"] as? String,
-           let date = ISO8601DateFormatter().date(from: timestampString) {
+           let date = iso8601Formatter.date(from: timestampString) {
             timestamp = date
         } else {
             timestamp = Date()
@@ -281,9 +284,9 @@ class NetworkManager {
     private func handleIncomingCursorUpdate(_ cursorData: CursorData) {
         // Only process updates from users we're subscribed to
         guard subscriptions.contains(cursorData.userId) else { return }
-        
-        DispatchQueue.main.async {
-            self.cursorUpdateSubject.send(cursorData)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.cursorUpdateSubject.send(cursorData)
         }
     }
     
@@ -343,6 +346,9 @@ class NetworkManager {
     }
     
     private func attemptReconnect() {
+        guard !isReconnecting else { return }
+        isReconnecting = true
+
         if PointerPalsConfig.debugLogging {
             print("Attempting to reconnect...")
         }
@@ -350,6 +356,7 @@ class NetworkManager {
         webSocketTask?.cancel(with: .goingAway, reason: nil)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + PointerPalsConfig.reconnectionInterval) { [weak self] in
+            self?.isReconnecting = false
             self?.connectToServer()
         }
     }

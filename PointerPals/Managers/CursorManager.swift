@@ -191,12 +191,25 @@ class CursorManager {
     func setCursorScale(_ scale: CGFloat) {
         cursorScale = scale
 
-        // Recreate all active cursor windows with new scale
+        // Recreate cursor window UI only — no network changes needed for a visual setting
         let activeUserIds = Array(cursorWindows.keys)
         for userId in activeUserIds {
-            // Disable and re-enable to recreate window with new scale
-            disableSubscription(userId: userId)
-            enableSubscription(userId: userId)
+            // Tear down old window
+            cursorWindows[userId]?.orderOut(nil)
+            cursorWindows.removeValue(forKey: userId)
+
+            // Cancel any pending inactivity fade-out for this user
+            inactivityTimers[userId]?.invalidate()
+            inactivityTimers.removeValue(forKey: userId)
+
+            // Create new window with updated scale
+            let window = CursorWindow(userId: userId, cursorScale: scale)
+            cursorWindows[userId] = window
+
+            // Restore username label if visible
+            if shouldShowUsernames, let username = usernames[userId] {
+                window.updateUsername(username)
+            }
         }
     }
     
