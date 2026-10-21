@@ -10,6 +10,7 @@ class CursorManager {
     private var cursorScale: CGFloat = PointerPalsConfig.defaultCursorScale
     private var usernames: [String: String] = [:] // userId -> username mapping
     private var subscriptionStates: [String: Bool] = [:] // userId -> isEnabled
+    private var lastDayPalWasSeen: Date? // For counting good days in ReviewPrompter
 
     // Notification when subscriptions or usernames change
     let subscriptionsDidChange = PassthroughSubject<Void, Never>()
@@ -247,6 +248,14 @@ class CursorManager {
         // Fade in if needed and update position
         window.fadeIn()
         window.updatePosition(x: cursorData.x, y: cursorData.y)
+
+        // A pal's cursor is on screen: count it as one good day for the review prompt
+        let today = Calendar.current.startOfDay(for: Date())
+        if lastDayPalWasSeen != today {
+            lastDayPalWasSeen = today
+            ReviewPrompter.shared.noteAppActive()
+            ReviewPrompter.shared.recordSignificantEvent()
+        }
 
         // Start new inactivity timer
         let timer = Timer.scheduledTimer(

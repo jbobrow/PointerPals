@@ -84,8 +84,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, Welcome
 
         // Check for first launch and prompt for launch on startup
         checkFirstLaunch()
+
+        // Menu bar apps rarely become active, so count launch as a day of use too
+        ReviewPrompter.shared.noteAppActive()
     }
-    
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        ReviewPrompter.shared.noteAppActive()
+    }
+
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
@@ -272,12 +279,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, Welcome
         if response == .alertFirstButtonReturn {
             let userId = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if !userId.isEmpty {
+                let isNewPal = !cursorManager.allSubscriptions.contains(userId)
                 cursorManager.subscribe(to: userId)
 
                 // Defer menu update for consistency
                 DispatchQueue.main.async { [weak self] in
                     self?.updateStatusItemTitle()
                     self?.updateMenu()
+                }
+
+                // Adding another pal is a happy moment; maybe ask for a review
+                if isNewPal && cursorManager.allSubscriptions.contains(userId) {
+                    ReviewPrompter.shared.requestReviewIfAppropriate()
                 }
             }
         }
@@ -519,6 +532,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelegate, Welcome
                 }
             }
             // If discard, do nothing
+        }
+
+        // Settings closed at a calm moment; maybe ask for a review (not mid-demo)
+        if demoCursorWindow == nil {
+            ReviewPrompter.shared.requestReviewIfAppropriate()
         }
     }
 
