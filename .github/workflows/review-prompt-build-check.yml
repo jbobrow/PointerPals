@@ -1,0 +1,23 @@
+name: Review prompt build check
+on:
+  push:
+    branches: [review-prompt]
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          ls /Applications | grep -i xcode || true
+          if [ -d /Applications/Xcode_26.6.app ]; then sudo xcode-select -s /Applications/Xcode_26.6.app; fi
+          xcodebuild -version
+      - name: List
+        run: xcodebuild -list -project PointerPals.xcodeproj
+      - name: Build macOS
+        run: |
+          set -o pipefail
+          xcodebuild -project PointerPals.xcodeproj -scheme PointerPals -configuration Debug \
+            -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build.log
+          echo "---- warnings ----"
+          grep -n "warning:" build.log | grep -v "appintentsmetadataprocessor" || true
